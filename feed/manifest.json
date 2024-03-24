@@ -12,7 +12,7 @@
     "content_scripts": [
       {
         "matches": ["*://*/*"],
-        "js": ["blocker.js", "signals.js"]
+        "js": ["web_proc/WebProc.js", "web_proc/RedditProc.js", "signals.js", "blocker.js"]
       }
     ],
     "background" : {

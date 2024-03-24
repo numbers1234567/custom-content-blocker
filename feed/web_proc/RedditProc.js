@@ -1,4 +1,3 @@
-import("./WebProc.js");
 
 class RedditProc extends WebProc {
     className = "Post";
@@ -10,7 +9,7 @@ class RedditProc extends WebProc {
         return url;
     }
     getRelevantData(el) {
-        getPostFromChildEl(el);
+        el = this.getPostFromChildEl(el);
         // Get title
         let title = el.querySelector("div[data-adclicklocation=title]").textContent;
         // Get images
@@ -20,7 +19,7 @@ class RedditProc extends WebProc {
             imgLinks.push(this.getImgFromPreviewURL(imgEl.src));
         // potentially getting other media here
         // ...
-        
+
         return {text : title, media: imgLinks};
     }
 }

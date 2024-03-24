@@ -18,18 +18,19 @@ function highlightMouseElement(e) {
 }
 
 function blockEl(el) {
-   if (el) element.style.backdropFilter = "blur(5px)";
+   if (el) el.style.visibility = "hidden";
 }
 
 function onEscPressed(e) {
-    if (e.code=="escape") disableSelectionMode();
+    if (e.code=="Escape") disableSelectionMode();
 }
 
 function onLMouse(e) {
     if (e.button==0) {
-        console.log(mouseEl);
-        blockEl(mouseEl);
+        let toBlock = mouseEl;
         disableSelectionMode();
+        // [TO-DO] send element to backend for processing.
+        blockEl(toBlock);
     }
 }
 

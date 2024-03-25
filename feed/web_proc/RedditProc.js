@@ -10,9 +10,9 @@ class RedditProc extends WebProc {
     getImgFromPreviewURL(url) {
         // Returned form: https://i.redd.it/[filename]
         // list of matching expressions
-        if (new RegExp(".*://i\.redd\.it/*").matches(url)) return url;
-        if (new RegExp(".*://preview\.redd\.it/*").matches(url)) {
-            let qName = url.split(".it/")[-1];
+        if (new RegExp(".*://i\.redd\.it/*").test(url)) return url;
+        if (new RegExp(".*://preview\.redd\.it/*").test(url)) {
+            let qName = url.split("it/")[1];
             let filename = qName.split("?")[0];
             return "https://i.redd.it/" + filename;
         }

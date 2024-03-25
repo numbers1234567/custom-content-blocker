@@ -1,5 +1,5 @@
 
-if (new RegExp(".*://.*\.reddit\..*/.*")) proc = new RedditProc();
+if (new RegExp(".*://.*\.reddit\..*/.*").test(document.URL)) proc = new RedditProc();
 else proc = new WebProc();
 
 selecting_post = false;

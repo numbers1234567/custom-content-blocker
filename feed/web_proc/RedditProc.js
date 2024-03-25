@@ -8,7 +8,15 @@ class RedditProc extends WebProc {
         return el;
     }
     getImgFromPreviewURL(url) {
-        return url;
+        // Returned form: https://i.redd.it/[filename]
+        // list of matching expressions
+        if (new RegExp(".*://i\.redd\.it/*").matches(url)) return url;
+        if (new RegExp(".*://preview\.redd\.it/*").matches(url)) {
+            let qName = url.split(".it/")[-1];
+            let filename = qName.split("?")[0];
+            return "https://i.redd.it/" + filename;
+        }
+        return null;
     }
     getRelevantData(el) {
         el = this.getPostFromChildEl(el);
@@ -25,6 +33,6 @@ class RedditProc extends WebProc {
         // potentially getting other media here
         // ...
 
-        return {text : title, media: imgLinks};
+        return {text : title, media: {images: imgLinks}};
     }
 }

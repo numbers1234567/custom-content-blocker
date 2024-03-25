@@ -1,4 +1,6 @@
-import("./signals.js");
+
+if (new RegExp(".*://.*\.reddit\..*/.*")) proc = new RedditProc();
+else proc = new WebProc();
 
 selecting_post = false;
 var mouseEl = null;
@@ -27,9 +29,13 @@ function onEscPressed(e) {
 
 function onLMouse(e) {
     if (e.button==0) {
-        let toBlock = mouseEl;
+        let toBlock = proc.getPostFromChildEl(mouseEl);
+        // Prevent click from propagating
+        e.stopPropagation();
+        e.preventDefault();
         disableSelectionMode();
         // [TO-DO] send element to backend for processing.
+        console.log(proc.getRelevantData(toBlock));
         blockEl(toBlock);
     }
 }
@@ -40,7 +46,7 @@ function disableSelectionMode() {
     selecting_post=false;
     document.removeEventListener("mousemove", highlightMouseElement);
     document.removeEventListener("keydown", onEscPressed);
-    document.removeEventListener("mousedown", onLMouse);
+    document.removeEventListener("click", onLMouse);
     // unhighlight
     if (mouseEl) mouseEl.style = mouseElStyle;
     mouseEl = null;
@@ -52,7 +58,7 @@ function enableSelectionMode() {
     selecting_post = true;
     document.addEventListener("mousemove", highlightMouseElement);
     document.addEventListener("keydown", onEscPressed);
-    document.addEventListener("mousedown", onLMouse);
+    document.addEventListener("click", onLMouse, true);
 }
 
 browser.runtime.onMessage.addListener(

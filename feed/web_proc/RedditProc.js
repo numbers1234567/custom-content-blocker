@@ -2,8 +2,10 @@
 class RedditProc extends WebProc {
     className = "Post";
     getPostFromChildEl(el) {
-        while (el.tagName != "html" && !el.className.split(" ").includes(this.className)) el = el.parentElement;
-        if (el.tagName == "html") throw new InvalidPostError("Element is not part of a post.");
+        while (el && !el.className.split(" ").includes(this.className)) 
+            el = el.parentElement;
+        if (!el) throw new InvalidPostError("Element is not part of a post.");
+        return el;
     }
     getImgFromPreviewURL(url) {
         return url;
@@ -11,12 +13,15 @@ class RedditProc extends WebProc {
     getRelevantData(el) {
         el = this.getPostFromChildEl(el);
         // Get title
-        let title = el.querySelector("div[data-adclicklocation=title]").textContent;
+        let title = el.querySelector("div[data-adclicklocation=title]").children[0].textContent;
         // Get images
         let imgEls = el.getElementsByTagName("img");
         var imgLinks = []
-        for (let imgEl in imgEls) 
-            imgLinks.push(this.getImgFromPreviewURL(imgEl.src));
+        for (const imgEl of imgEls) {
+            let imgLink = this.getImgFromPreviewURL(imgEl.src);
+            if (imgLink)
+                imgLinks.push(imgLink);
+        }
         // potentially getting other media here
         // ...
 

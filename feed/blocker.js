@@ -1,4 +1,4 @@
-
+//https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
 if (new RegExp(".*://.*\.reddit\..*/.*").test(document.URL)) proc = new RedditProc();
 else proc = new WebProc();
 
@@ -14,9 +14,11 @@ function highlightMouseElement(e) {
     if (mouseEl) 
         mouseEl.style = mouseElStyle;
     // highlight
-    mouseEl = newEl;
-    mouseElStyle = mouseEl.style;
-    mouseEl.style.border = "3px solid red";
+    if (newEl) {
+        mouseEl = newEl;
+        mouseElStyle = mouseEl.style;
+        mouseEl.style.border = "3px solid red";
+    }
 }
 
 function blockEl(el) {
@@ -36,6 +38,7 @@ function onLMouse(e) {
         disableSelectionMode();
         // [TO-DO] send element to backend for processing.
         console.log(proc.getRelevantData(toBlock));
+        filter_post(proc.getRelevantData(toBlock));
         blockEl(toBlock);
     }
 }

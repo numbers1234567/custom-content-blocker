@@ -17,8 +17,11 @@ class WebProc {
     getID(el) {
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
-    getRelevantData(el) {
+    getRelevantData(el) { // Get some data from a post
         return {media: {text: this.getText(el), images: this.getImgUrls(el), video: this.getVideoUrls(el)}, 
-                metadata: {id: this.getID(el)}};
+        metadata: {id: this.getID(el)}};
+    }
+    getDomUpdateData(mutationList) { // getRelevantData from dom updates, so getting data from newly loaded posts
+        throw new WebProcUndefinedError("Processing undefined for this website");
     }
 };

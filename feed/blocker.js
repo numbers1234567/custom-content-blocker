@@ -1,8 +1,26 @@
-//https://developer.mozilla.org/en-US/docs/Web/API/MutationObserver
-if (new RegExp(".*://.*\.reddit\..*/.*").test(document.URL)) proc = new RedditProc();
+// Define web processing
+if (new RegExp(".*://.*\.reddit\..*/.*").test(document.URL)) {
+    proc = new RedditProc();
+    dataNode = document.getElementsByClassName("rpBJOHq2PR60pnwJlUyP0").item(0);
+}
 else proc = new WebProc();
 
-selecting_post = false;
+// Define dom observer
+function onDomUpdate(mutationList, observer) {
+    const newPosts = proc.getDomUpdateData(mutationList);
+    for (const data of newPosts) {
+        processPost(data, () => console.log("Bruh"));
+        console.log(data);
+    }
+}
+
+const changeObserverConfig = {childList : true};
+const observer = new MutationObserver(onDomUpdate);
+
+observer.observe(dataNode, changeObserverConfig);
+
+// manual blocking
+var selecting_post = false;
 var mouseEl = null;
 var mouseElStyle = null;
 
@@ -38,7 +56,7 @@ function onLMouse(e) {
         disableSelectionMode();
         // [TO-DO] send element to backend for processing.
         console.log(proc.getRelevantData(toBlock));
-        filter_post(proc.getRelevantData(toBlock));
+        processBlock(proc.getRelevantData(toBlock));
         blockEl(toBlock);
     }
 }

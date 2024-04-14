@@ -50,4 +50,14 @@ class RedditProc extends WebProc {
         el = this.getPostFromChildEl(el);
         return super.getRelevantData(el);
     }
+    getDomUpdateData(mutationList) {
+        var res = [];
+        for (const mutation of mutationList) {
+            for (const node of mutation.addedNodes) {
+                let targetNode = node.firstChild.firstChild;
+                res.push(this.getRelevantData(targetNode));
+            }
+        }
+        return res;
+    }
 }

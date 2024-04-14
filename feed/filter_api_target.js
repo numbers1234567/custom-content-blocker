@@ -1,19 +1,20 @@
-const FILTER_API_URL = "http://127.0.0.1:8000";//"[API URL here]";
+const FILTER_API_URL = "http://localhost:8000";//"[API URL here]";
 var current_key = "admin";
 
-function filter_post(post_data) {
+// Add post to backend database. Determine if block
+function processPost(post_data, block_callback) {
     
     // Send the POST request using fetch
     fetch(`${FILTER_API_URL}/process_post/${current_key}/`, {
         method: "POST",
-        mode: "no-cors",
+        mode: "cors",
         headers: {
             "Content-Type": "application/json"
         },
         body: JSON.stringify(post_data)
     }).then(
         (data) => {
-            console.log(data);
+            console.log(data.json());
         }
     ).catch(
         (error) => {
@@ -22,4 +23,9 @@ function filter_post(post_data) {
     );
     //.then((response) => response.json())
     //.then((data) => console.log("Success:", data));
+}
+
+// Post is assumed to be stored in backend database
+function processBlock(post_id) {
+
 }

@@ -21,6 +21,7 @@
 
     "permissions": [
         "menus",
-        "activeTab"
+        "activeTab",
+        "*://localhost/*"
     ]
   }  

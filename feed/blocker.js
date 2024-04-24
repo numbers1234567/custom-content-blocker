@@ -1,10 +1,3 @@
-// Define web processing
-if (new RegExp(".*://.*\.reddit\..*/.*").test(document.URL)) {
-    proc = new RedditProc();
-    dataNode = document.getElementsByClassName("rpBJOHq2PR60pnwJlUyP0").item(0);
-}
-else proc = new WebProc();
-
 // Define dom observer
 function onDomUpdate(mutationList, observer) {
     const newPosts = proc.getDomUpdateData(mutationList);
@@ -17,7 +10,7 @@ function onDomUpdate(mutationList, observer) {
 const changeObserverConfig = {childList : true};
 const observer = new MutationObserver(onDomUpdate);
 
-observer.observe(dataNode, changeObserverConfig);
+observer.observe(proc.getDataNode(), changeObserverConfig);
 
 // manual blocking
 var selecting_post = false;

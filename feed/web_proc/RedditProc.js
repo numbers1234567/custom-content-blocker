@@ -1,12 +1,13 @@
 
 class RedditProc extends WebProc {
-    className = "Post";
     baseRegEx     = new RegExp(".*://i\.redd\.it/*");
     previewRegEx  = new RegExp(".*://preview\.redd\.it/*");
     postLinkRegEx = new RegExp("/r/.*/comments/.*/.*/")
+    dataNode = document.getElementById("main-content").lastElementChild;
     getPostFromChildEl(el) {
-        while (el && !el.className.split(" ").includes(this.className)) 
+        while (el && el.tagName!="SHREDDIT-POST") {
             el = el.parentElement;
+        }
         if (!el) throw new InvalidPostError("Element is not part of a post.");
         return el;
     }
@@ -17,7 +18,7 @@ class RedditProc extends WebProc {
         if (this.previewRegEx.test(url)) {
             let qName = url.split("it/")[1];
             let filename = qName.split("?")[0];
-            return "https://i.redd.it/" + filename;
+            //return "https://i.redd.it/" + filename;
         }
         return null;
     }
@@ -32,10 +33,10 @@ class RedditProc extends WebProc {
         return imgLinks;
     }
     getVideoUrls(el) {
-        
+        return []
     }
     getText(el) {
-        return el.querySelector("div[data-adclicklocation=title]").children[0].textContent;
+        return el.querySelectorAll('[slot="title"]')[0].textContent;
     }
     getID(el) {
         let anchors = el.getElementsByTagName("a");
@@ -46,16 +47,18 @@ class RedditProc extends WebProc {
         }
         return null;
     }
-    getRelevantData(el) {
-        el = this.getPostFromChildEl(el);
-        return super.getRelevantData(el);
+    getDataNode() {
+        return this.dataNode;
     }
     getDomUpdateData(mutationList) {
         var res = [];
         for (const mutation of mutationList) {
             for (const node of mutation.addedNodes) {
-                let targetNode = node.firstChild.firstChild;
-                res.push(this.getRelevantData(targetNode));
+                if (node.tagName != "FACEPLATE-BATCH") continue;
+                for (const node2 of node.children) { 
+                    if (node2.tagName != "ARTICLE") continue;
+                    res.push(this.getRelevantData(node2.getElementsByTagName("SHREDDIT-POST")[0]));
+                }
             }
         }
         return res;

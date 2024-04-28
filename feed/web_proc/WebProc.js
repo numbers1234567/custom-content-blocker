@@ -6,10 +6,10 @@ class WebProc {
     getPostFromChildEl(el) {
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
-    getImgData(el) { // Return as a list of {content : [Raw Data as a string], dataFormat : string}
+    getImgData(el) { // Return as a list of {content : [Promise of Raw Data as a string], dataFormat : string}
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
-    getVidData(el) { // Return as a list of {content : [Raw Data as a string], dataFormat : string}
+    getVidData(el) { // Return as a list of {content : [Promise of Raw Data as a string], dataFormat : string}
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
     getText(el) { // Return as a string

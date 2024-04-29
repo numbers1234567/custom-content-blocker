@@ -25,13 +25,11 @@ class WebProc {
         return new Promise(function(resolve, reject) { // ew
             Promise.all(procObj.getImgData(el)).then(
             (imgData) => {
-                resolve({media: {text: procObj.getText(el), images: imgData, video: []}, 
-                    metadata: {id: procObj.getID(el)}});
-                /*Promise.all(procObj.getVidData(el)).then(
+                Promise.all(procObj.getVidData(el)).then(
                 (vidData) => {
                     resolve({media: {text: procObj.getText(el), images: imgData, video: vidData}, 
                         metadata: {id: procObj.getID(el)}});
-                })*/
+                })
             })
         });
     }

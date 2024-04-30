@@ -22,18 +22,18 @@ class RedditProc extends WebProc {
         }
         return null;
     }
-    getImgUrls(el) {
-        let imgEls = el.getElementsByTagName("img");
-        var imgLinks = []
-        for (const imgEl of imgEls) {
-            let imgLink = this.getImgFromPreviewURL(imgEl.src);
-            if (imgLink)
-                imgLinks.push(imgLink);
-        }
-        return imgLinks;
+    getImgData(el) {
+        let imgEls = Array.from(el.querySelectorAll("img.media-lightbox-img"));
+        
+        return imgEls.map(getRawPixelData);
     }
-    getVideoUrls(el) {
-        return []
+    getVidData(el) { // There may actually be no way to get the raw video data, so this will just get a frame.
+        const player = el.getElementsByTagName("SHREDDIT-PLAYER")[0];
+        if (!player) return [];
+        const playerRoot = player && player.shadowRoot;
+        const vidEls = Array.from(playerRoot.childNodes[2].getElementsByTagName("video"));
+        console.log(vidEls);
+        return vidEls.map(getRawPixelData);
     }
     getText(el) {
         return el.querySelectorAll('[slot="title"]')[0].textContent;

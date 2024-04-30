@@ -1,9 +1,10 @@
 // Define dom observer
 function onDomUpdate(mutationList, observer) {
     const newPosts = proc.getDomUpdateData(mutationList);
-    for (const data of newPosts) {
-        processPost(data, () => console.log("Bruh"));
-        console.log(data);
+    for (const post of newPosts) {
+        post.then((data) => {
+            processPost(data, () => {});
+        });
     }
 }
 
@@ -48,8 +49,6 @@ function onLMouse(e) {
         e.preventDefault();
         disableSelectionMode();
         // [TO-DO] send element to backend for processing.
-        console.log(proc.getRelevantData(toBlock));
-        processBlock(proc.getRelevantData(toBlock));
         blockEl(toBlock);
     }
 }

@@ -12,7 +12,7 @@
     "content_scripts": [
       {
         "matches": ["*://*/*"],
-        "js": ["filter_api_target.js", "web_proc/WebProc.js", "web_proc/RedditProc.js", "web_proc/WebProcList.js", "signals.js", "blocker.js"]
+        "js": ["filter_api_target.js", "web_proc/WebProc.js", "web_proc/MediaProc.js", "web_proc/RedditProc.js", "web_proc/WebProcList.js", "signals.js", "blocker.js"]
       }
     ],
     "background" : {

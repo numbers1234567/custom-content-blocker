@@ -3,7 +3,6 @@ var current_key = "admin";
 
 // Add post to backend database. Determine if block
 function processPost(post_data, block_callback) {
-    
     // Send the POST request using fetch
     fetch(`${FILTER_API_URL}/process_post/${current_key}/`, {
         method: "POST",
@@ -14,7 +13,6 @@ function processPost(post_data, block_callback) {
         body: JSON.stringify(post_data)
     }).then(
         (data) => {
-            console.log(data.json());
         }
     ).catch(
         (error) => {

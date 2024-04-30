@@ -16,8 +16,7 @@ function getRawPixelData(el) {
             ctx.drawImage(el, 0, 0);
 
             var dataURL = canvas.toDataURL("image/" + format);
-
-            resolve({content : dataURL, dataFormat : format});
+            resolve({content : dataURL.split(",")[1], dataFormat : format});
         }
         if (el.complete) loadData();
         else el.onload = loadData

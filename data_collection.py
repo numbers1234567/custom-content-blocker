@@ -16,10 +16,13 @@ import pandas as pd
 from models.blip import blip_feature_extractor
 
 target_dir = "datasets"
+media_dir = os.path.join(target_dir, "media")
+if not os.path.isdir(target_dir): os.mkdir(target_dir)
+if not os.path.isdir(media_dir): os.mkdir(media_dir)
 main_filename = "main.csv"
 media_filename = "media.csv"
 current_split = "train"
-current_label = 1
+current_label = 0
 
 main_file  = os.path.join(target_dir, main_filename)
 media_file = os.path.join(target_dir, media_filename)
@@ -28,17 +31,17 @@ target_file_lock = threading.Lock()
 
 print(os.listdir(target_dir))
 if main_filename not in os.listdir(target_dir):
-    with open(main_file, "w+") as f:
-        f.write("ID,text,label,split")
+    with open(main_file, "w+", encoding="utf-8") as f:
+        f.write("ID\ttext\tlabel\tsplit\n")
 
 if media_filename not in os.listdir(target_dir):
-    with open(media_file, "w+") as f:
-        f.write("ID,path")
+    with open(media_file, "w+", encoding="utf-8") as f:
+        f.write("ID\tpath\n")
 cur_id = 0
-if pd.read_csv(main_file).empty:
+if pd.read_csv(main_file, delimiter="\t").empty:
     cur_id = 0
 else:
-    cur_id = pd.read_csv(main_file)["ID"].max() + 1
+    cur_id = pd.read_csv(main_file, delimiter="\t")["ID"].max() + 1
 #cur_id = pd.read_csv("")
 
 # API
@@ -83,17 +86,21 @@ def decode_b64media(media : str):
 def save_post_data(post_info : PostInfo):
     global cur_id
     with target_file_lock, \
-     open(os.path.join(target_dir, "main.csv"), "a") as main, \
-     open(os.path.join(target_dir, "media.csv"), "a") as media:
+     open(os.path.join(target_dir, "main.csv"), "a", encoding="utf-8") as main, \
+     open(os.path.join(target_dir, "media.csv"), "a", encoding="utf-8") as media:
         # Create file then add it to the media file
         for i,m in enumerate(post_info.media.images + post_info.media.video):
-            filename = os.path.join("media", "%d_%d.%s" % (cur_id, i, m.dataFormat))
-            with open(os.path.join(target_dir, filename), "wb+") as f:
+            filename = os.path.join(media_dir, "%d_%d.%s" % (cur_id, i, m.dataFormat))
+            with open(filename, "wb+") as f:
                 f.write(decode_b64media(m.content))
         for i,m in enumerate(post_info.media.images + post_info.media.video):
-            media.write("%d,%s\n" % (cur_id, filename))
+            media.write("%d\t%s\n" % (cur_id, filename))
         # Add to main file
-        main.write(f'{cur_id},"{post_info.media.text}",{current_label},{current_split}\n')
+        #main.write(f'{cur_id},"{post_info.media.text.replace('\n', '')}",{current_label},{current_split}\n')
+        main.write('%d\t%s\t%d\t%s\n' % (cur_id, 
+                                         post_info.media.text.replace('\n', '').replace("\t","").strip(), 
+                                         current_label, 
+                                         current_split))
         cur_id += 1
 
 

@@ -94,6 +94,7 @@ def save_post_data(post_info : PostInfo):
             with open(filename, "wb+") as f:
                 f.write(decode_b64media(m.content))
         for i,m in enumerate(post_info.media.images + post_info.media.video):
+            filename = os.path.join(media_dir, "%d_%d.%s" % (cur_id, i, m.dataFormat))
             media.write("%d\t%s\n" % (cur_id, filename))
         # Add to main file
         #main.write(f'{cur_id},"{post_info.media.text.replace('\n', '')}",{current_label},{current_split}\n')

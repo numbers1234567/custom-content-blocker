@@ -1,4 +1,4 @@
-from torch.utils.data import Dataset, DataLoader, Sampler
+from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
 import random
 import cv2
 import pandas as pd
@@ -25,7 +25,7 @@ class RedditDataset(Dataset):
         image_paths = self.media_df.loc[self.media_df["ID"]==index]["path"]
         image_paths = [os.path.join(self.root_dir, path) for path in image_paths]
         images = [cv2.imread(path) for path in image_paths]
-        return text,images,label
+        return text,[im for im in images if im is not None],label
     
 class RedditDataSampler(Sampler):
     def __init__(self, root_dir, main_csv="main.csv", split="train"):
@@ -37,9 +37,13 @@ class RedditDataSampler(Sampler):
         self.cur_index = 0
 
     def __iter__(self):
-        if self.cur_index==len(self.indices): # Seen all data
-            random.shuffle(self.indices)
-            self.cur_index = 0
-        ret = self.indices[self.cur_index]
-        self.cur_index += 1
-        yield ret
+        while True:
+            if self.cur_index==len(self.indices): # Seen all data
+                random.shuffle(self.indices)
+                self.cur_index = 0
+            ret = self.indices[self.cur_index]
+            self.cur_index += 1
+            yield ret
+
+    def __len__(self):
+        return len(self.indices)

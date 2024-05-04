@@ -1,5 +1,8 @@
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
+import torch
 from torchvision import transforms
+from torchvision.transforms.functional import InterpolationMode
+
 import cv2
 
 import pandas as pd
@@ -34,9 +37,11 @@ class RedditDataset(Dataset):
         images = [cv2.imread(path) for path in image_paths]
         images = [im for im in images if im is not None]
 
-        image = np.zeros((1000,1000))
+        image = np.zeros((1000,1000,3))
         if len(images) > 0:
             image = random.choice(images)
+        image = image.transpose((2,0,1))
+        image = torch.Tensor(image)
         image = self.transform(image)
 
         return text,image,label

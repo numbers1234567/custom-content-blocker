@@ -12,6 +12,8 @@ function getRawPixelData(el) {
             canvas.width = el.width;
             canvas.height = el.height;
 
+            if (el.width==0 || el.height==0) reject("Could not load image.");
+
             var ctx = canvas.getContext("2d");
             ctx.drawImage(el, 0, 0);
 

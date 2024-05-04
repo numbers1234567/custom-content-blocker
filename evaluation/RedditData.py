@@ -1,11 +1,15 @@
 from torch.utils.data import Dataset, DataLoader, Sampler, BatchSampler
-import random
+from torchvision import transforms
 import cv2
+
 import pandas as pd
+import numpy as np
+
+import random
 import os
 
 class RedditDataset(Dataset):
-    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train"):
+    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train", im_transform=transforms.Compose([])):
         super().__init__()
         self.main_csv  = os.path.join(root_dir, main_csv)
         self.media_csv = os.path.join(root_dir, media_csv)
@@ -16,16 +20,26 @@ class RedditDataset(Dataset):
         self.main_df   = self.main_df[self.main_df["split"]==split]
         self.media_df  = pd.read_csv(self.media_csv, delimiter="\t")
 
+        self.transform = im_transform
+
     def __len__(self): return len(self.main_df)
     def __getitem__(self, index):
         # A little inefficient, but data is going to be small.
         main_row = self.main_df.loc[self.main_df["ID"]==index]
         text = main_row["text"].iloc[0]
         label = main_row["label"].iloc[0]
+
         image_paths = self.media_df.loc[self.media_df["ID"]==index]["path"]
         image_paths = [os.path.join(self.root_dir, path) for path in image_paths]
         images = [cv2.imread(path) for path in image_paths]
-        return text,[im for im in images if im is not None],label
+        images = [im for im in images if im is not None]
+
+        image = np.zeros((1000,1000))
+        if len(images) > 0:
+            image = random.choice(images)
+        image = self.transform(image)
+
+        return text,image,label
     
 class RedditDataSampler(Sampler):
     def __init__(self, root_dir, main_csv="main.csv", split="train"):

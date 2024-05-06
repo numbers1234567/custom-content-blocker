@@ -1,9 +1,16 @@
+function redditGetDataNode() {
+    let cur = document.getElementById("main-content").lastElementChild;
+    if (cur.tagName!="div")  // on all or popular
+        cur = cur.lastElementChild.lastElementChild
+    console.log(cur);
+    return cur;
+}
 
 class RedditProc extends WebProc {
     baseRegEx     = new RegExp(".*://i\.redd\.it/*");
     previewRegEx  = new RegExp(".*://preview\.redd\.it/*");
     postLinkRegEx = new RegExp("/r/.*/comments/.*/.*/")
-    dataNode = document.getElementById("main-content").lastElementChild;
+    dataNode = redditGetDataNode();
     getPostFromChildEl(el) {
         while (el && el.tagName!="SHREDDIT-POST") {
             el = el.parentElement;
@@ -32,7 +39,6 @@ class RedditProc extends WebProc {
         if (!player) return [];
         const playerRoot = player && player.shadowRoot;
         const vidEls = Array.from(playerRoot.childNodes[2].getElementsByTagName("video"));
-        console.log(vidEls);
         return vidEls.map(getRawPixelData);
     }
     getText(el) {
@@ -54,6 +60,8 @@ class RedditProc extends WebProc {
         var res = [];
         for (const mutation of mutationList) {
             for (const node of mutation.addedNodes) {
+                if (node.tagName == "ARTICLE") 
+                    res.push(this.getRelevantData(node.getElementsByTagName("SHREDDIT-POST")[0]));
                 if (node.tagName != "FACEPLATE-BATCH") continue;
                 for (const node2 of node.children) { 
                     if (node2.tagName != "ARTICLE") continue;

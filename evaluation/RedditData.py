@@ -4,6 +4,7 @@ from torchvision import transforms
 from torchvision.transforms.functional import InterpolationMode
 
 import cv2
+from PIL import Image
 
 import pandas as pd
 import numpy as np
@@ -12,8 +13,8 @@ import random
 import os
 
 class RedditDataset(Dataset):
-    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train", im_transform=transforms.Compose([])):
-        super().__init__()
+    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train", im_transform=transforms.Compose([]), **kwargs):
+        super().__init__(**kwargs)
         self.main_csv  = os.path.join(root_dir, main_csv)
         self.media_csv = os.path.join(root_dir, media_csv)
         self.root_dir  = root_dir
@@ -34,14 +35,13 @@ class RedditDataset(Dataset):
 
         image_paths = self.media_df.loc[self.media_df["ID"]==index]["path"]
         image_paths = [os.path.join(self.root_dir, path) for path in image_paths]
-        images = [cv2.imread(path) for path in image_paths]
+        print(image_paths)
+        images = [Image.open(path).convert('RGB') for path in image_paths]
         images = [im for im in images if im is not None]
 
-        image = np.zeros((1000,1000,3))
+        image = Image.new('RGB', (1000, 1000))
         if len(images) > 0:
             image = random.choice(images)
-        image = image.transpose((2,0,1))
-        image = torch.Tensor(image)
         image = self.transform(image)
 
         return text,image,label

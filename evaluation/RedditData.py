@@ -35,7 +35,7 @@ class RedditDataset(Dataset):
 
         image_paths = self.media_df.loc[self.media_df["ID"]==index]["path"]
         image_paths = [os.path.join(self.root_dir, path) for path in image_paths]
-        print(image_paths)
+        
         images = [Image.open(path).convert('RGB') for path in image_paths]
         images = [im for im in images if im is not None]
 

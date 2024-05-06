@@ -60,6 +60,7 @@ class RedditDataSampler(Sampler):
             if self.cur_index==len(self.indices): # Seen all data
                 random.shuffle(self.indices)
                 self.cur_index = 0
+                return
             ret = self.indices[self.cur_index]
             self.cur_index += 1
             yield ret

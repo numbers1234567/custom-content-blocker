@@ -13,7 +13,7 @@ import random
 import os
 
 class RedditDataset(Dataset):
-    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train", im_transform=transforms.Compose([]), **kwargs):
+    def __init__(self, root_dir, main_csv="main.csv", media_csv="media.csv", split="train", im_transform=transforms.Compose([transforms.ToTensor(), transforms.Resize((224,224),interpolation=InterpolationMode.BICUBIC)]), **kwargs):
         super().__init__(**kwargs)
         self.main_csv  = os.path.join(root_dir, main_csv)
         self.media_csv = os.path.join(root_dir, media_csv)
@@ -36,7 +36,7 @@ class RedditDataset(Dataset):
         image_paths = self.media_df.loc[self.media_df["ID"]==index]["path"]
         image_paths = [os.path.join(self.root_dir, path) for path in image_paths]
         
-        images = [Image.open(path).convert('RGB') for path in image_paths]
+        images = [Image.open(path).convert('RGB') for path in image_paths][1::2]
         images = [im for im in images if im is not None]
 
         image = Image.new('RGB', (1000, 1000))

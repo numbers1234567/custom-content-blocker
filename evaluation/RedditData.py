@@ -40,11 +40,13 @@ class RedditDataset(Dataset):
         images = [im for im in images if im is not None]
 
         image = Image.new('RGB', (1000, 1000))
+        has_image = False
         if len(images) > 0:
             image = random.choice(images)
+            has_image = True
         image = self.transform(image)
 
-        return text,image,label
+        return text,image,label,has_image
     
 class RedditDataSampler(Sampler):
     def __init__(self, root_dir, main_csv="main.csv", split="train"):

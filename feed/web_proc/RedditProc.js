@@ -1,7 +1,7 @@
 function redditGetDataNode() {
     let cur = document.getElementById("main-content").lastElementChild;
     if (cur.tagName!="div")  // on all or popular
-        cur = cur.lastElementChild.lastElementChild
+        cur = cur.lastElementChild
     console.log(cur);
     return cur;
 }

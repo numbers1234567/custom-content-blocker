@@ -2,8 +2,8 @@
 function onDomUpdate(mutationList, observer) {
     const newPosts = proc.getDomUpdateData(mutationList);
     for (const post of newPosts) {
-        post.then((data) => {
-            processPost(data, () => {});
+        post["data"].then((data) => {
+            processPost(data, () => {blockEl(post["post"]); console.log(post["post"])});
         });
     }
 }

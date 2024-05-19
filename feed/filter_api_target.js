@@ -11,16 +11,11 @@ function processPost(post_data, block_callback) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify(post_data)
-    }).then(
-        (data) => {
-        }
-    ).catch(
-        (error) => {
-            console.log(error);
-        }
-    );
-    //.then((response) => response.json())
-    //.then((data) => console.log("Success:", data));
+    }
+    ).then((response) => response.json()
+    ).then((data) => {
+        if (data["block_score"] > 0.5) block_callback();
+    });
 }
 
 // Post is assumed to be stored in backend database

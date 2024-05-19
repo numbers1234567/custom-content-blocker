@@ -27,8 +27,9 @@ class WebProc {
             (imgData) => {
                 Promise.all(procObj.getVidData(el)).then(
                 (vidData) => {
-                    resolve({media: {text: procObj.getText(el), images: imgData, video: vidData}, 
-                        metadata: {id: procObj.getID(el)}});
+                    let res = {media: {text: procObj.getText(el), images: imgData, video: vidData}, 
+                    metadata: {id: procObj.getID(el)}};
+                    resolve(res);
                 })
             })
         });
@@ -37,7 +38,7 @@ class WebProc {
     getDataNode(el) {
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
-    getDomUpdateData(mutationList) { // getRelevantData from dom updates, so getting data from newly loaded posts
+    getDomUpdateData(mutationList) { // {"data" : getRelevantData, "post" : node} from dom updates, so getting data from newly loaded posts
         throw new WebProcUndefinedError("Processing undefined for this website");
     }
 };

@@ -1,6 +1,6 @@
 function redditGetDataNode() {
     let cur = document.getElementById("main-content").lastElementChild;
-    if (cur.tagName!="div")  // on all or popular
+    if (cur.tagName=="DSA-TRANSPARENCY-MODAL-PROVIDER")  // on all or popular
         cur = cur.lastElementChild
     console.log(cur);
     return cur;
@@ -61,11 +61,11 @@ class RedditProc extends WebProc {
         for (const mutation of mutationList) {
             for (const node of mutation.addedNodes) {
                 if (node.tagName == "ARTICLE") 
-                    res.push(this.getRelevantData(node.getElementsByTagName("SHREDDIT-POST")[0]));
+                    res.push({"data" : this.getRelevantData(node.getElementsByTagName("SHREDDIT-POST")[0]), "post" : node});
                 if (node.tagName != "FACEPLATE-BATCH") continue;
                 for (const node2 of node.children) { 
                     if (node2.tagName != "ARTICLE") continue;
-                    res.push(this.getRelevantData(node2.getElementsByTagName("SHREDDIT-POST")[0]));
+                    res.push({"data" : this.getRelevantData(node2.getElementsByTagName("SHREDDIT-POST")[0]), "post" : node});
                 }
             }
         }

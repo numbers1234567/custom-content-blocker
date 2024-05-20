@@ -49,19 +49,33 @@ class RedditDataset(Dataset):
         return text,image,label,has_image
     
 class RedditDataSampler(Sampler):
-    def __init__(self, root_dir, main_csv="main.csv", split="train"):
+    def __init__(self, root_dir, main_csv="main.csv", split="train", upsampling=False):
         super().__init__()
         main_csv  = os.path.join(root_dir, main_csv)
         main_df = pd.read_csv(main_csv, delimiter="\t")
-        self.indices = list(main_df[main_df["split"]==split]["ID"])
-        random.shuffle(self.indices)
+
+        self.negindices = list(main_df[main_df["split"]==split and main_df["label"]==0]["ID"])
+        self.posindices = list(main_df[main_df["split"]==split and main_df["label"]==1]["ID"])
+        
+        self.upsampling = upsampling
+        
+        self.set_order()
+
+    def set_order(self):
         self.cur_index = 0
+        self.indices = self.negindices + self.posindices
+        if self.upsampling:
+            if len(self.negindices) < len(self.posindices):
+                self.indices += random.choices(self.negindices, k=len(self.posindices)-len(self.negindices))
+            elif len(self.negindices) > len(self.posindices):
+                self.indices += random.choices(self.negindices, k=len(self.negindices)-len(self.posindices))
+        else:
+            random.shuffle(self.indices)
 
     def __iter__(self):
         while True:
             if self.cur_index==len(self.indices): # Seen all data
-                random.shuffle(self.indices)
-                self.cur_index = 0
+                self.set_order()
                 return
             ret = self.indices[self.cur_index]
             self.cur_index += 1

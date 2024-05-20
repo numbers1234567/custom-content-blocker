@@ -65,7 +65,7 @@ class RedditProc extends WebProc {
                 if (node.tagName != "FACEPLATE-BATCH") continue;
                 for (const node2 of node.children) { 
                     if (node2.tagName != "ARTICLE") continue;
-                    res.push({"data" : this.getRelevantData(node2.getElementsByTagName("SHREDDIT-POST")[0]), "post" : node});
+                    res.push({"data" : this.getRelevantData(node2.getElementsByTagName("SHREDDIT-POST")[0]), "post" : node2});
                 }
             }
         }

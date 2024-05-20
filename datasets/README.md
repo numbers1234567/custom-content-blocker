@@ -25,11 +25,16 @@ Training:
  * https://www.reddit.com/r/interestingasfuck/
  * https://www.reddit.com/r/funny/
  * https://www.reddit.com/r/Damnthatsinteresting/
+ * https://www.reddit.com/r/memes/
+ * https://www.reddit.com/r/EarthPorn/
+ * https://www.reddit.com/r/all/
 
 Testing:
  * https://www.reddit.com/r/Israel/
  * https://www.reddit.com/r/pakistan/
  * https://www.reddit.com/r/Palestine/
- * https://www.reddit.com/r/memes/
+ * https://www.reddit.com/r/popular/
 
 Posts are collected by starting the server with data_collection.py and then going to the websites with the browser (with the extension active and using data_collection.py as the API)
+
+You will notice that there are different versions of main.csv. main_val.csv is an 80/20 validation split. These are the base main.csv files. main_val_x_y.csv includes x% of the negative samples and y% of the positive samples. The removed samples are placed into the validation set.

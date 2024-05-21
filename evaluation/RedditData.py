@@ -54,8 +54,10 @@ class RedditDataSampler(Sampler):
         main_csv  = os.path.join(root_dir, main_csv)
         main_df = pd.read_csv(main_csv, delimiter="\t")
 
-        self.negindices = list(main_df[main_df["split"]==split and main_df["label"]==0]["ID"])
-        self.posindices = list(main_df[main_df["split"]==split and main_df["label"]==1]["ID"])
+        split_df = main_df[main_df["split"]==split]
+
+        self.negindices = list(split_df[split_df["label"]==0]["ID"])
+        self.posindices = list(split_df[split_df["label"]==1]["ID"])
         
         self.upsampling = upsampling
         
@@ -68,9 +70,8 @@ class RedditDataSampler(Sampler):
             if len(self.negindices) < len(self.posindices):
                 self.indices += random.choices(self.negindices, k=len(self.posindices)-len(self.negindices))
             elif len(self.negindices) > len(self.posindices):
-                self.indices += random.choices(self.negindices, k=len(self.negindices)-len(self.posindices))
-        else:
-            random.shuffle(self.indices)
+                self.indices += random.choices(self.posindices, k=len(self.negindices)-len(self.posindices))
+        random.shuffle(self.indices)
 
     def __iter__(self):
         while True:

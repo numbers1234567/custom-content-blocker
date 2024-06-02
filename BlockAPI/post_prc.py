@@ -1,4 +1,5 @@
-# Handles post processing requests from a single client
+# Handles post processing requests from a single client. 
+# Usage: python post_prc.py --address [ADDR]
 from PIL import Image
 
 import io
@@ -8,8 +9,16 @@ import struct
 import pickle
 import classifier
 
-ADDRESS = ("127.0.0.1", 8001)
-bufsize = 8192
+import argparse
+
+parser = argparse.ArgumentParser(description="Process social media posts using ML.")
+parser.add_argument("--address", dest="ADDR", default="127.0.0.1", help="Address of post processor")
+parser.add_argument("--port", dest="PORT", default=8001, help="Port of post processor")
+parser.add_argument("--net_bufsize", dest="BUFSIZE", default=8192, help="Buffer size (in bytes) for receiving network messages.")
+args = parser.parse_args()
+
+ADDRESS = (args.ADDR, args.PORT)
+bufsize = args.BUFSIZE
 
 def process_post(post : post_data.PostData):
     return 0.5

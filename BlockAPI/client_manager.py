@@ -4,29 +4,31 @@ import post_data
 import socket
 import struct
 import pickle
+from typing import Tuple
 
 """
 Manages shared resources between the API clients. 
-Communicate with post processor.
+Communicate with post processor on behalf of API clients.
 """
 class ClientManager:
-    post_processor_address = ("127.0.0.1", 8001)
     post_processor_bufsize = 8192
-    def __init__(self):
+    def __init__(self, post_processor_address:Tuple[str, int] = ("127.0.0.1", 8001)):
         self.client_pipes = {} # (ukey, uid): send end of pipe
         self.client_pipes_lock = threading.Lock()
         # Create a listener for the post processor
         self.listener_thread = threading.Thread(target=lambda: self.activate_listener(), name="Post-Processor-Listener")
         self.listener_thread.start()
         self.post_proc_sock = None
+        self.post_processor_address = post_processor_address
 
-    def add_client(self, ukey : str, uid : str):
+    def add_client(self, ukey : str, uid : str): 
+        # Provide a pipe to populate for communication
         with self.client_pipes_lock:
             recv,send = multiprocessing.Pipe(duplex=False)
             self.client_pipes[(ukey, uid)] = send
             return recv
 
-    def block_score(self, post : post_data.PostData):
+    def block_score(self, post : post_data.PostData): # I don't like how this is here. This is better placed elsewhere.
         # Create a pipe to read from
         recv = self.add_client(post.metadata.ukey, post.metadata.uid)
         # Send post to post processor
@@ -50,7 +52,7 @@ class ClientManager:
     
     def activate_listener(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect(ClientManager.post_processor_address)
+            s.connect(self.post_processor_address)
             self.post_proc_sock = s
             message = None
             while message := self.listen_message(s):

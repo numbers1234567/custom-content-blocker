@@ -5,10 +5,16 @@ import base64
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+# Network
 import net_msg
 import post_data
 
 from client_manager import ClientManager
+import configparser
+config = configparser.ConfigParser()
+config.read("net_config.ini")
+post_prc_addr = config["post processor"]["server"]
+post_prc_port = int(config["post processor"]["port"])
 
 origins = [
 ]
@@ -22,12 +28,12 @@ app.add_middleware(
     allow_headers=["*"]
 )
 
-mgr = ClientManager()
+mgr = ClientManager(post_processor_address=(post_prc_addr, post_prc_port))
 
 def decode_b64media(media : str) -> bytes:
     return base64.b64decode(media)
 
-def package_data(user_key : str, post_info : net_msg.PostData) -> post_data.PostData:
+def package_data(user_key : str, post_info : net_msg.PostData) -> post_data.PostData: # Transform data into a uniform format for internal processing.
     video_data = []
     image_data = []
     text = post_info.media.text
@@ -43,7 +49,7 @@ def package_data(user_key : str, post_info : net_msg.PostData) -> post_data.Post
 
     return post_data.PostData(media=media_data, metadata=metadata)
 
-def get_block_result(data : post_data.PostData):
+def get_block_result(data : post_data.PostData) -> float:
     return mgr.block_score(data).item()
 
 @app.post("/process_post/{user_key}/")

@@ -8,8 +8,8 @@ When a user enters a social media site and the content blocker extension is acti
 
 Currently, this only blocks political content. The following video shows how the application automatically hid a political post. I used the inspector to unhide the post.
 
-![Alt Text](evaluation/example.gif)
+![Alt Text](example.gif)
 
-In this example, it is not immediately obvious that the post is political. It only becomes clear at the bottom, where someone replied referencing the Trump convictions. I was surprised the model correctly classified this, since it would have to read text in the image and notice the replier is talking about an election.
+In this example video, four (!) posts are blocked in a row. Notice the false positive. This is because there are much more nonpolitical posts than political posts, so a false positive is inevitable. It's an anomaly that there were so many political posts in one area.
 
-I will note that people may have different ideas of what counts as "political." For example, since it is pride month, there is an influx of pride-related posts which are classified as political.
+Notice that BLIP takes both image and text as input, but I modified it so it can handle text alone.

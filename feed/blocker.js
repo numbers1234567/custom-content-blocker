@@ -33,9 +33,41 @@ function highlightMouseElement(e) {
     }
 }
 
-function blockEl(el) {
-   if (el) el.style.visibility = "hidden";
+// Block/unblocking
+
+function createBlocked() {
+    const button = document.createElement("button");
+    button.className = "blocker-blocked";
+    button.style.width = "10%";
+    button.style.height = "30px";
+    button.style.marginTop = "10%";
+    button.style.position = "relative";
+    button.style.top = "50%";
+    button.style.left = "50%";
+    button.style.transform = "translate(-50%, -50%)";
+    button.textContent = "Show";
+    button.onclick = (ev) => { unblock(button.parentElement); };
+    return button;
 }
+
+function blockEl(el) {
+    console.log(el);
+    if (!el) return;
+    for (const e of el.children) e.style.display = "none";
+    el.prepend(createBlocked());
+}
+
+function unblock(el) {
+    const toRemove = []
+    for (const e of el.children) {
+        e.style.display = "";
+        if (e.className == "blocker-blocked") toRemove.push(e);
+    }
+    for (const e of toRemove) 
+        el.removeChild(e);
+}
+
+// User input
 
 function onEscPressed(e) {
     if (e.code=="Escape") disableSelectionMode();

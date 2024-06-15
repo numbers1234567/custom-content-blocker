@@ -10,6 +10,11 @@ import pickle
 import classifier
 
 import argparse
+import configparser
+
+config = configparser.ConfigParser()
+config.read("net_config.ini")
+ready_message = config["post processor"]["ready-message"]
 
 parser = argparse.ArgumentParser(description="Process social media posts using ML.")
 parser.add_argument("--address", dest="ADDR", default="127.0.0.1", help="Address of post processor")
@@ -46,7 +51,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     s.bind(ADDRESS)
     print(f"Bind to port {ADDRESS}")
     s.listen()
-    print("Accepting Connections")
+    print(ready_message)
     conn, addr = s.accept()
     print(f"Connected by {addr}")
     with conn:

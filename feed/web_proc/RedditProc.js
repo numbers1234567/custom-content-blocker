@@ -1,6 +1,6 @@
 function redditGetDataNode() {
     let cur = document.getElementById("main-content").lastElementChild;
-    if (cur.tagName=="DSA-TRANSPARENCY-MODAL-PROVIDER")  // on all or popular
+    if (cur.tagName!="SHREDDIT-FEED") // on a subreddit
         cur = cur.lastElementChild
     console.log(cur);
     return cur;
@@ -31,8 +31,14 @@ class RedditProc extends WebProc {
     }
     getImgData(el) {
         let imgEls = Array.from(el.querySelectorAll("img.media-lightbox-img"));
+
+        let newImgEls = new Array();
+        var i = 0;
+        for (const el of imgEls) 
+            if (i++ % 2 == 1)
+                newImgEls.push(el);
         
-        return imgEls.map(getRawPixelData);
+        return newImgEls.map(getRawPixelData);
     }
     getVidData(el) { // There may actually be no way to get the raw video data, so this will just get a frame.
         const player = el.getElementsByTagName("SHREDDIT-PLAYER")[0];

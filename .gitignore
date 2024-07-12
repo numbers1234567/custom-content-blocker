@@ -3,3 +3,9 @@
 /political-tests.txt
 /resources.md
 /__pycache__
+/datasets/media/*
+/datasets/*.csv
+/evaluation/model_checkpoints/*
+/evaluation/archive/*
+*.log
+*.cpython*

@@ -13,10 +13,10 @@ import base64
 
 # DS
 import pandas as pd
-from models.blip import blip_feature_extractor
 
 target_dir = "datasets"
-media_dir = os.path.join(target_dir, "media")
+media_dirname = "media"
+media_dir = os.path.join(target_dir, media_dirname)
 if not os.path.isdir(target_dir): os.mkdir(target_dir)
 if not os.path.isdir(media_dir): os.mkdir(media_dir)
 main_filename = "main.csv"
@@ -94,7 +94,7 @@ def save_post_data(post_info : PostInfo):
             with open(filename, "wb+") as f:
                 f.write(decode_b64media(m.content))
         for i,m in enumerate(post_info.media.images + post_info.media.video):
-            filename = os.path.join(media_dir, "%d_%d.%s" % (cur_id, i, m.dataFormat))
+            filename = os.path.join(media_dirname, "%d_%d.%s" % (cur_id, i, m.dataFormat))
             media.write("%d\t%s\n" % (cur_id, filename))
         # Add to main file
         #main.write(f'{cur_id},"{post_info.media.text.replace('\n', '')}",{current_label},{current_split}\n')

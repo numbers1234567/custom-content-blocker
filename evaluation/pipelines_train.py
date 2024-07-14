@@ -25,15 +25,26 @@ class Classifier:
         pass
 
 class BLIPNLVRHead(nn.Module):
-    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu"):
+    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
         super().__init__()
         with open(med_config, "r") as f:
             config = json.load(f)
-        self.mlp = nn.Sequential(
+        seq = [
             nn.Linear(config["hidden_size"], config["hidden_size"]),
             nn.ReLU(),
             nn.Linear(config["hidden_size"], 2),
             nn.Sigmoid()
+        ]
+        if dropout:
+            seq = [
+                nn.Linear(config["hidden_size"], config["hidden_size"]),
+                nn.ReLU(),
+                nn.Dropout(p=0.2),
+                nn.Linear(config["hidden_size"], 2),
+                nn.Sigmoid()
+            ]
+        self.mlp = nn.Sequential(
+            *seq
         ).to(device)
         self.loss = CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.mlp.parameters())
@@ -48,7 +59,10 @@ class BLIPNLVRHead(nn.Module):
         self.optimizer.step()
 
     def forward(self, features):
-        return self.mlp(features).cpu().detach().numpy()
+        self.eval()
+        res = self.mlp(features).cpu().detach().numpy()
+        self.train()
+        return res
     
     def save(self, path):
         torch.save(self.state_dict(), path)
@@ -58,20 +72,32 @@ class BLIPNLVRHead(nn.Module):
         self.load_state_dict(checkpoint)
 
 class BLIPDeepHead1(nn.Module):
-    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu"):
+    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
         super().__init__()
         with open(med_config, "r") as f:
             config = json.load(f)
-        self.mlp = nn.Sequential(
+        seq = [
             nn.Linear(config["hidden_size"], config["hidden_size"]//2),
             nn.ReLU(),
             nn.Linear(config["hidden_size"]//2, 2),
             nn.Sigmoid()
+        ]
+        if dropout:
+            seq = [
+                nn.Linear(config["hidden_size"], config["hidden_size"]//2),
+                nn.ReLU(),
+                nn.Dropout(p=0.2),
+                nn.Linear(config["hidden_size"]//2, 2),
+                nn.Sigmoid()
+            ]
+        self.mlp = nn.Sequential(
+            *seq
         ).to(device)
         self.loss = CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.mlp.parameters())
 
         self.device = device
+        self.dropout = dropout
 
     def train_head(self, features, label):
         label = label.to(self.device)
@@ -81,7 +107,10 @@ class BLIPDeepHead1(nn.Module):
         self.optimizer.step()
 
     def forward(self, features):
-        return self.mlp(features).cpu().detach().numpy()
+        self.eval()
+        res = self.mlp(features).cpu().detach().numpy()
+        self.train()
+        return res
     
     def save(self, path):
         torch.save(self.state_dict(), path)
@@ -124,15 +153,70 @@ class BLIPDeepHead2(nn.Module):
         self.load_state_dict(checkpoint)
 
 class BLIPDeepHead3(nn.Module):
-    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu"):
+    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
         super().__init__()
         with open(med_config, "r") as f:
             config = json.load(f)
-        self.mlp = nn.Sequential(
+        seq = [
             nn.Linear(config["hidden_size"], config["hidden_size"]//4),
             nn.ReLU(),
             nn.Linear(config["hidden_size"]//4, 2),
             nn.Sigmoid()
+        ]
+        if dropout:
+            seq = [
+                nn.Linear(config["hidden_size"], config["hidden_size"]//4),
+                nn.ReLU(),
+                nn.Dropout(p=0.2),
+                nn.Linear(config["hidden_size"]//4, 2),
+                nn.Sigmoid()
+            ]
+        self.mlp = nn.Sequential(
+            *seq
+        ).to(device)
+        self.loss = CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.mlp.parameters())
+
+        self.device = device
+
+    def train_head(self, features, label):
+        label = label.to(self.device)
+        yp = self.mlp(features)
+        l = torch.mean(self.loss(yp, label))
+        l.backward()
+        self.optimizer.step()
+
+    def forward(self, features):
+        return self.mlp(features).cpu().detach().numpy()
+    
+    def save(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load(self, path):
+        checkpoint = torch.load(path)
+        self.load_state_dict(checkpoint)
+
+class BLIPDeepHead3Focal(nn.Module):
+    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
+        super().__init__()
+        with open(med_config, "r") as f:
+            config = json.load(f)
+        seq = [
+            nn.Linear(config["hidden_size"], config["hidden_size"]//4),
+            nn.ReLU(),
+            nn.Linear(config["hidden_size"]//4, 2),
+            nn.Sigmoid()
+        ]
+        if dropout:
+            seq = [
+                nn.Linear(config["hidden_size"], config["hidden_size"]//4),
+                nn.ReLU(),
+                nn.Dropout(p=0.2),
+                nn.Linear(config["hidden_size"]//4, 2),
+                nn.Sigmoid()
+            ]
+        self.mlp = nn.Sequential(
+            *seq
         ).to(device)
         self.loss = CrossEntropyLoss()
         self.optimizer = torch.optim.Adam(self.mlp.parameters())

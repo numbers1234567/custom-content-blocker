@@ -4,4 +4,4 @@ services:
     name: content-curation-social-media-database-post-manager
     runtime: python
     buildCommand: "./build.sh"
-    startCommand: "uvicorn main:app"
+    startCommand: "uvicorn main:app --host 0.0.0.0 --port $PORT"

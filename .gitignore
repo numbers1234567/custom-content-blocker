@@ -9,3 +9,5 @@
 /evaluation/archive/*
 *.log
 *.cpython*
+lib-tests/*
+*/secret.*

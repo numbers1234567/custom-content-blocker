@@ -38,7 +38,7 @@ app = FastAPI()
 
 @app.post("/update_post_db/")
 async def update_post_db(): 
-    # Periodically run to add posts to database
+    # Periodically run to add posts to database. Might be better to move this to a different service.
     pass
 
 @app.get("/recent_posts")
@@ -49,10 +49,10 @@ async def get_recent_posts(before : int, count : int=20):
         # New to SQL, so there might be a more performant way to do this.
         # There's also possibility for indexing
         cur.execute("""
-            SELECT embed_html 
+            SELECT embed_html, create_utc
             FROM SOCIAL_MEDIA_POSTS
             WHERE create_utc < %s
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()
-    return {"html_embeds" : [embed for (embed,) in embeds]}
+    return {"html_embeds" : [{"html" : embed, "create_utc" : create_utc}  for (embed,create_utc) in embeds]}

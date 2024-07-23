@@ -5,6 +5,7 @@
 
 # API
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
 from SocialAPIHandlers.SocialClient import SocialClient
@@ -16,6 +17,7 @@ import psycopg2
 # utility
 import os
 from pydantic import BaseModel
+
 
 #################
 #   CONSTANTS   #
@@ -35,6 +37,17 @@ POSTGRES_DB_URL = f'postgres://{POSTGRES_DB_USER}:{POSTGRES_DB_PASS}@{POSTGRES_D
 #################
 
 app = FastAPI()
+origins = [
+    "http://localhost:3000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.post("/update_post_db/")
 async def update_post_db(): 
@@ -44,6 +57,7 @@ async def update_post_db():
 @app.get("/recent_posts")
 # just need to confirm I can retrieve posts from the database, then I can add some fancy curation features.
 async def get_recent_posts(before : int, count : int=20):
+    if count > 100: count = 100
     with psycopg2.connect(POSTGRES_DB_URL) as conn:
         cur = conn.cursor()
         # New to SQL, so there might be a more performant way to do this.

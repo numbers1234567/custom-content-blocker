@@ -1,6 +1,7 @@
 "use client"
 import { ReactElement, useEffect, useRef, useState } from "react";
 import { SocialPost } from "./social_post";
+import { CURATE_API_PATH } from "../config";
 
 export function PostBatch(
     {beforeUTC, setBeforeUTC} :

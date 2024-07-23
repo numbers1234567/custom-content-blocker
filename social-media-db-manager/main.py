@@ -39,8 +39,8 @@ POSTGRES_DB_URL = f'postgres://{POSTGRES_DB_USER}:{POSTGRES_DB_PASS}@{POSTGRES_D
 app = FastAPI()
 origins = [
     "http://localhost:3000",
-    "https://content-curator.vercel.app/",
-    "https://content-curator-git-staging-angelo-pimientas-projects.vercel.app/"
+    "https://content-curator.vercel.app",
+    "https://content-curator-git-staging-angelo-pimientas-projects.vercel.app"
 ]
 
 app.add_middleware(

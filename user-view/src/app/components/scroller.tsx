@@ -2,8 +2,6 @@
 import { ReactElement, useEffect, useRef, useState } from "react";
 import { SocialPost } from "./social_post";
 
-const API_PATH = "http://localhost:8000";
-
 export function PostBatch(
     {beforeUTC, setBeforeUTC} :
     {beforeUTC : number, setBeforeUTC : (time : number) => void}
@@ -12,7 +10,7 @@ export function PostBatch(
     // Get HTML embeds for posts
     useEffect(() => {
         let html = []
-        fetch(`${API_PATH}/recent_posts?before=${beforeUTC}&count=10`)
+        fetch(`${CURATE_API_PATH}/recent_posts?before=${beforeUTC}&count=10`)
             .then(response => response.json())
             .then(json => {
                 html = json.html_embeds.map((item : {html : string, create_utc : number})=>item.html);

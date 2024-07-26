@@ -66,8 +66,9 @@ async def get_recent_posts(before : int, count : int=20):
         # There's also possibility for indexing
         cur.execute("""
             SELECT embed_html, create_utc
-            FROM SOCIAL_MEDIA_POSTS
+            FROM social_post_data
             WHERE create_utc < %s
+            ORDER BY create_utc
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()

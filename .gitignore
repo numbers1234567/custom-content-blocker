@@ -11,4 +11,3 @@
 *.cpython*
 lib-tests/*
 */secret.*
-user-view/src/app/config.tsx

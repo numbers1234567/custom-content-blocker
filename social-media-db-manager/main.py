@@ -68,7 +68,7 @@ async def get_recent_posts(before : int, count : int=20):
             SELECT embed_html, create_utc
             FROM social_post_data
             WHERE create_utc < %s
-            ORDER BY create_utc
+            ORDER BY create_utc DESC
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()

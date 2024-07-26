@@ -19,6 +19,8 @@ services:
      - ./test_dataset:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_PASSWORD: 1234
+    ports:
+     - 5432:5432
 
   adminer:
     image: adminer

@@ -1,16 +1,18 @@
 from dataclasses import dataclass,field
 
 @dataclass
-class MetaData:
-    pass
+class SocialPostMetaData:
+    create_utc : int
+    post_id : str
 
 @dataclass
-class MediaData:
-    pass
+class SocialPostMediaData:
+    embed_html : str
 
 @dataclass
 class SocialPostData:
-    pass
+    metadata   : SocialPostMetaData
+    media_data : SocialPostMediaData
 
 class SocialClient:
     def __init__(self):

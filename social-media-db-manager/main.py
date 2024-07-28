@@ -107,8 +107,7 @@ async def update_post_db(count : int=2000):
 
         result = cur.fetchone()
 
-        max_id = result[0] if result!=None else -1
-
+        max_id = result[0] if result[0]!=None else -1
         
         cur.close()
 

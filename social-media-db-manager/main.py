@@ -106,11 +106,13 @@ async def update_post_db(count : int=2000):
         """)
 
         result = cur.fetchone()
+        max_id, = result
         if result == None:
             max_id = -1
 
-        max_id, = result
         
+        cur.close()
+
         return max_id
     
     def insert_post_db(conn, post : SocialPostData, max_id : int|None = None) -> bool:

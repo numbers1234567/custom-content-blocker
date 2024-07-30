@@ -183,11 +183,11 @@ async def get_recent_posts(before : int, count : int=20):
         # New to SQL, so there might be a more performant way to do this.
         # There's also possibility for indexing
         cur.execute("""
-            SELECT embed_html, create_utc
+            SELECT embed_html, create_utc, post_id
             FROM social_post_data
             WHERE create_utc < %s
             ORDER BY create_utc DESC
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()
-    return {"html_embeds" : [{"html" : embed, "create_utc" : create_utc}  for (embed,create_utc) in embeds]}
+    return {"html_embeds" : [{"html" : embed, "create_utc" : create_utc, "post_id" : post_id}  for (embed,create_utc,post_id) in embeds]}

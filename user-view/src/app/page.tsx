@@ -2,17 +2,36 @@
 import Image from "next/image";
 import { PostScroller } from "./components/scroller";
 import { SocialPost } from "./components/social_post";
-
-function createTestMarkup() {
-  return {__html: `
-    <blockquote class="reddit-embed-bq" style="height:500px" ><a href="https://www.reddit.com/r/MadeMeSmile/comments/1e7ybrv/the_explosion_of_excitement_could_not_be_contained/">The explosion of excitement could not be contained </a><br> by<a href="https://www.reddit.com/user/Sufficient-Bug-9112/">u/Sufficient-Bug-9112</a> in<a href="https://www.reddit.com/r/MadeMeSmile/">MadeMeSmile</a></blockquote><script async src="https://embed.reddit.com/widgets.js" charset="UTF-8"></script>
-    `}
-}
+import { Sidebar } from "./components/sidebar";
+import { useState } from "react";
+import { Credentials } from "./credentials";
+import { CurationSetting } from "./curation_settings";
 
 export default function Home() {
+  const [credentials, setCredentials] = useState<Credentials>({username : "guest", password : ""});
+  const [curationSettings, setCurationSettings] = useState<CurationSetting>({
+    curationMode : {key : "all", name : "All"},
+    socialMediaWhitelist : 
+      [
+        {key : "reddit", name : "Reddit"},
+        {key : "twitter", name : "Twitter"},
+        {key : "instagram", name : "Instagram"},
+        {key : "youtube", name : "YouTube"},
+        {key : "facebook", name : "Facebook"},
+      ],
+    trendingFilters : [],
+  });
+
+  // Maybe some auto-login using cookies here
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <PostScroller/>
+    <main className="">
+      <div className="fixed left-0 top-0">
+        <Sidebar credentials={credentials} curationSettings={curationSettings} setCurationSettings={setCurationSettings}/>
+      </div>
+      <div className="top-0 w-full items-center">
+        <PostScroller credentials={credentials} curationSettings={curationSettings}/>
+      </div>
     </main>
   );
 }

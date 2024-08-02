@@ -42,8 +42,8 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
         return random.random()
     if curation_key=="all":
         return 1
-    if curation_key=="none":
-        return 0
+    if curation_key=="no_politics":
+        return 1
 
 
 #################
@@ -92,7 +92,6 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         request.before, request.count_max, request.count_min, \
         request.min_score, request.curation_key
     curated_posts : list[CuratedPost] = []
-    print("Received! " + str(posts_before))
 
     social_posts = get_recent_posts(posts_before, count_max)
 
@@ -115,5 +114,4 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
             curated_posts = curated_posts[:idx]
             break
 
-    print(curated_posts)
     return CuratedPostsResponseBody(posts=curated_posts)

@@ -86,6 +86,11 @@ class RedditClient(SocialClient):
 
     def post_generator(self, count:int=100) -> Generator[PostGetter, None, None]:
         for post in self.reddit.subreddit("popular").hot(limit=count):
-            yield RedditPostGetter(post)
+            try:
+                yield RedditPostGetter(post)
+            except Exception as e:
+                print(f"[ERROR]: Failed to retrieve post {post.get_post_id()}!")
+                print("   Message: " + str(e))
+            
 
         

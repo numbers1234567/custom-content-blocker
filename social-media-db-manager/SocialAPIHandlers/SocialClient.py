@@ -59,11 +59,7 @@ class SocialClient:
             media_data = SocialPostBaseMediaData(post.get_embed_html(), post.get_text(), post.get_imgs_b64())
 
             last_gen = time.time()
-            try:
-                yield SocialPostBaseData(metadata, media_data)
-            except Exception as e:
-                print(f"[ERROR]: Failed to retrieve post {post.get_post_id()}!")
-                print("   Message: " + str(e))
+            yield SocialPostBaseData(metadata, media_data)
 
             # Don't request too frequently
             elapsed = time.time()-last_gen

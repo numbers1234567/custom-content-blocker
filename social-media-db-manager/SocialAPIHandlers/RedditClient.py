@@ -89,7 +89,7 @@ class RedditClient(SocialClient):
             try:
                 yield RedditPostGetter(post)
             except Exception as e:
-                print(f"[ERROR]: Failed to retrieve post {post.get_post_id()}!")
+                print(f"[ERROR]: Failed to retrieve post {post.permalink}!")
                 print("   Message: " + str(e))
             
 

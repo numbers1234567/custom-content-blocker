@@ -13,6 +13,7 @@ class RedditPostGetter(PostGetter):
     def __init__(self, post):
         self.post = post
         self.permalink = post.permalink
+        print(self.get_post_id())
         self.post_json = json.loads(requests.get(self.get_post_id()[:-1] + ".json").content)
 
     def get_embed_html(self):

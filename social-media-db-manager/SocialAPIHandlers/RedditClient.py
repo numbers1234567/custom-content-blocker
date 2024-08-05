@@ -10,12 +10,10 @@ def clean_image_url(url : str) -> str:
     return url.replace("&amp;", "&")
 
 class RedditPostGetter(PostGetter):
-    def __init__(self, post):
+    def __init__(self, post, verbose=True):
+        self.verbose = verbose
         self.post = post
         self.permalink = post.permalink
-        print(self.get_post_id())
-        print(requests.get((self.get_post_id()[:-1] + ".json").replace("/.json", ".json")).content)
-        self.post_json = json.loads(requests.get((self.get_post_id()[:-1] + ".json").replace("/.json", ".json")).content)
 
     def get_embed_html(self):
         reformatted_url = f"https://www.reddit.com{self.permalink}"
@@ -25,17 +23,29 @@ class RedditPostGetter(PostGetter):
 
     
     def get_imgs_b64(self) -> list[str]:
+        print(f"[LOG]: Retrieving images in {self.get_post_id()}")
+
         base_url = self.post.url
         img_urls = []
         # It is a single image
         if "i.redd.it" in base_url:
+            print(f"[LOG]: {self.get_post_id()} is an image post")
             img_urls.append(base_url)
 
+        print(f"[LOG]: Retrieving gallery images for {self.get_post_id()}")
         # It is a gallery of images
         try:  # Possible things could go wrong with all of these accesses
-            for _,im_versions in self.post_json[0]["data"]["children"][0]["data"]["media_metadata"].items():
+            for media in self.post.gallery_data['items']:
+                media_id = media["media_id"]
+
+                metadata = self.post.media_metadata[media_id]
+
+                # Only images
+                if metadata["e"] != "image":
+                    continue
+
                 best_version = (-1000, "")  # (size, url)
-                for version in im_versions['p'] + [im_versions['s']]:
+                for version in metadata['p'] + [metadata['s']]:
                     size = version["x"]*version["y"]
                     if size > 1000*1000: continue  # Too big 
 
@@ -44,7 +54,7 @@ class RedditPostGetter(PostGetter):
                     img_urls.append(clean_image_url(best_version[1]))
 
         except Exception as e:
-            print(f"[LOG]: Could not find gallery images for {self.get_post_id()}!")
+            print(f"[LOG]: Could not find gallery images for {self.get_post_id()}")
             print("   Error: " + str(e))
 
         # Convert images

@@ -15,8 +15,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
-from SocialAPIHandlers.SocialClient import SocialClient, SocialPostData
+from SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
 from SocialAPIHandlers.RedditClient import RedditClient
+
+# third-party services
+from huggingface_hub import get_inference_endpoint
 
 # Database
 import psycopg2
@@ -29,6 +32,10 @@ import json
 import requests
 
 import multiprocessing as mp
+
+from typing import Union
+
+import time
 
 
 #################
@@ -45,19 +52,42 @@ _POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
 POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
 
 # Social Media APIs
-_REDDIT_API_CLIENT_ID=os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
-_REDDIT_API_CLIENT_SECRET=os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
-_REDDIT_API_PASSWORD=os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
-_REDDIT_API_USER_AGENT=os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
-_REDDIT_API_USERNAME=os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+_REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
+_REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
+_REDDIT_API_PASSWORD      = os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
+_REDDIT_API_USER_AGENT    = os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
+_REDDIT_API_USERNAME      = os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+
+# HuggingFace inference endpoints
+_HUGGINGFACE_ENDPOINT_URL  = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_URL"]
+_HUGGINGFACE_ENDPOINT_NAME = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_NAME"]
+_HUGGINGFACE_ACCESS_TOKEN  = os.environ["CONTENT_CURATION_HUGGINGFACE_ACCESS_TOKEN"]
+
 
 ############################
-#   SOCIAL MEDIA CLIENTS   #
+#   THIRD PARTY SERVICES   #
 ############################
+
+huggingface_blip_endpoint = get_inference_endpoint(name=_HUGGINGFACE_ENDPOINT_NAME, token=_HUGGINGFACE_ACCESS_TOKEN)
+
+def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=None):
+    body = {
+        "inputs" : {
+            "text" : text, 
+            "has_image" : base_64_image!=None, 
+            "image" : base_64_image 
+        }
+    }
+
+    feature_vector = json.loads(huggingface_blip_endpoint.client.post(json=body))["feature_vector"][0]
+
+    return feature_vector
+
 
 SOCIAL_CLIENTS = [
     RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT),
 ]
+
 
 #################
 #   ENDPOINTS   #
@@ -86,7 +116,7 @@ Expected to run every hour.
 """
 @app.post("/update_post_db")
 async def update_post_db(count : int=2000): 
-    def check_post_exists_db(conn, post : SocialPostData) -> bool:
+    def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
         cur: psycopg2.cursor = conn.cursor()
         cur.execute("""
             SELECT * 
@@ -97,7 +127,8 @@ async def update_post_db(count : int=2000):
         cur.close()
         return db_post != None
     
-    def get_max_internal_id(conn) -> int:
+    def get_max_internal_id() -> int:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
         cur: psycopg2.cursor = conn.cursor()
 
         cur.execute("""
@@ -110,25 +141,52 @@ async def update_post_db(count : int=2000):
         max_id = result[0] if result[0]!=None else -1
         
         cur.close()
+        conn.close()
 
         return max_id
     
-    def insert_post_db(conn, post : SocialPostData, max_id : int|None = None) -> bool:
+    def insert_post_db(post : SocialPostBaseData, max_id : int|None = None) -> bool:
+        try:
+            conn = psycopg2.connect(POSTGRES_DB_URL)
+            cur = conn.cursor()
+        except Exception as e:
+            print(f"[ERROR]: Failed to connect to database!")
+            print("   Error message " + str(e))
+            return False
+
         if check_post_exists_db(conn, post):
             print(f"[Message]: Post {post.metadata.post_id} already exists in db!")
             return False
         
-        cur: psycopg2.cursor = conn.cursor()
         try:
             if max_id == None: 
                 max_id = get_max_internal_id(conn)
 
             
             cur.execute("""
-                INSERT INTO social_post_data (internal_id, post_id, embed_html, create_utc)
-                    VALUES (%s, %s, %s, %s);
-            """, (max_id+1, post.metadata.post_id, post.media_data.embed_html, post.metadata.create_utc))
+                INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
+                    VALUES (%s, %s, %s, %s, %s);
+            """, (max_id+1, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
+
+            # Insert extra features here
+
+            # BLIP features
+            try:
+                has_image = len(post.media_data.images_b64) > 0
+                features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0].decode('utf-8') if has_image else None)
+
+                cur.execute("""
+                    INSERT INTO blip_features (internal_id, features)
+                        VALUES (%s, %s);
+                """, (max_id+1, features))
+            except Exception as e:
+                print(f"[ERROR]: Failed to insert BLIP features for {post.metadata.post_id}!")
+                print("   Error message " + str(e))
+
+            conn.commit()
+
             cur.close()
+            conn.close()
 
             print(f"[Message]: Inserted post {post.metadata.post_id}.")
             return True
@@ -146,27 +204,32 @@ async def update_post_db(count : int=2000):
     #  when inserting new posts. This is not an issue, since this should run periodically.
     #  However, if it comes to that, we could add a lock for this)
     def get_and_add_posts():
-        with psycopg2.connect(POSTGRES_DB_URL) as conn:
-            max_id = get_max_internal_id(conn)
+        huggingface_blip_endpoint.resume()
+        # Wait for things to initialize
+        huggingface_blip_endpoint.wait()
 
-            # Get all trending posts
-            social_posts: list[SocialPostData] = []
-            for client in SOCIAL_CLIENTS:
-                try:
-                    social_posts += client.get_relevant_posts()
-                except Exception as e:
-                    print("[ERROR]: Failed to retrieve posts for " + str(client) + "!")
-                    print("   Error message: " + str(e))
 
-            # Insert post data into database
+        max_id = get_max_internal_id()
+
+        # Get all trending posts
+        social_posts: list[SocialPostBaseData] = []
+        for client in SOCIAL_CLIENTS:
+            social_posts = []
+            try:
+                social_posts = client.get_relevant_posts()
+            except Exception as e:
+                print("[ERROR]: Failed to retrieve posts for " + str(client) + "!")
+                print("   Error message: " + str(e))
+
             for post in social_posts:
+                # Insert post in database
                 try:
-                    if insert_post_db(conn, post, max_id=max_id): max_id += 1
+                    if insert_post_db(post, max_id=max_id): max_id += 1
                 except Exception as e:
                     print(f"[ERROR]: Failed to insert post {post.metadata.post_id} into database!")
-                    print("   Error message " + str(e))
-
-            conn.commit()
+                    print("   Error message: " + str(e))
+        
+        huggingface_blip_endpoint.pause()
 
     # Process to return an indicator of successfully retrieved and started process.
     p = mp.Process(target=get_and_add_posts)

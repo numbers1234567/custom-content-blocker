@@ -164,7 +164,7 @@ async def update_post_db(count : int=2000):
 
             
             cur.execute("""
-                INSERT INTO social_post_data (internal_id, post_id, text, embed_html, create_utc)
+                INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc)
                     VALUES (%s, %s, %s, %s);
             """, (max_id+1, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
 

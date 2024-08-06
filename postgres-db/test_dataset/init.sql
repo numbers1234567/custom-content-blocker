@@ -1,7 +1,7 @@
 CREATE TABLE social_post_data (
     internal_id INT NOT NULL,
     post_id TEXT NOT NULL,
-    text TEXT NOT NULL
+    title TEXT NOT NULL,
     embed_html TEXT,
     create_utc INT,
     PRIMARY KEY (internal_id)

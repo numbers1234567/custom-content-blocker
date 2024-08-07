@@ -51,12 +51,12 @@ export function Sidebar({
         <p className="inline-block m-2">{val.name}</p>
       </div>
     })}
-    <div className="w-full h-6">
+    {/*<div className="w-full h-6">
       <p className="inline-block m-2">+</p>
       <p className="inline-block m-2">Create New</p>
-    </div>
+    </div>*/}
     <p className="mt-8">Whitelisted Sites</p>
-    {availableSocialSites.map((val)=>{
+    {/*availableSocialSites.map((val)=>{
       // WHITELIST SITES
       const isWhitelisted = curationSettings.socialMediaWhitelist
         .map((v)=>v.key)
@@ -69,9 +69,9 @@ export function Sidebar({
           onChange={(e)=>whitelistSite(val)}/>}
         <p className="inline-block m-2">{val.name}</p>
       </div>
-    })}
+    })*/}
     <p className="mt-8">Blacklisted Topics</p>
-    {availableFilters.map((val)=>{
+    {/*availableFilters.map((val)=>{
       // BLACKLIST TRENDING TOPICS
       const isBlacklisted = curationSettings.trendingFilters
         .map((v)=>v.key)
@@ -82,6 +82,6 @@ export function Sidebar({
         {!isBlacklisted && <input type="checkbox" className="inline-block m-2"/>}
         <p className="inline-block m-2">{val.name}</p>
       </div>
-    })}
+    })*/}
   </div>;
 }

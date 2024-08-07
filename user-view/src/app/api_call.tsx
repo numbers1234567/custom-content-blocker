@@ -46,7 +46,7 @@ export async function getCuratedPosts(request : CuratePostsRequestBody) : Promis
 export async function getUserCurationModes(credentials : Credentials) : Promise<CurationMode[]> {
   return [
     {key : "all", name : "All"},
-    {key : "half", name : "Half"},
+    //{key : "half", name : "Half"},
     {key : "no_politics", name : "No Politics"}
   ]
 }

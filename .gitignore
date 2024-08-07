@@ -11,3 +11,4 @@
 *.cpython*
 lib-tests/*
 */secret.*
+*.env

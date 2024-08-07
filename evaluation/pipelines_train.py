@@ -196,23 +196,67 @@ class BLIPDeepHead3(nn.Module):
         checkpoint = torch.load(path)
         self.load_state_dict(checkpoint)
 
-class BLIPDeepHead3Focal(nn.Module):
+class BLIPDeepHead4(nn.Module):
     def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
         super().__init__()
         with open(med_config, "r") as f:
             config = json.load(f)
         seq = [
-            nn.Linear(config["hidden_size"], config["hidden_size"]//4),
+            nn.Linear(config["hidden_size"], 10),
             nn.ReLU(),
-            nn.Linear(config["hidden_size"]//4, 2),
+            nn.Linear(10, 2),
             nn.Sigmoid()
         ]
         if dropout:
             seq = [
-                nn.Linear(config["hidden_size"], config["hidden_size"]//4),
+                nn.Linear(config["hidden_size"], 10),
                 nn.ReLU(),
                 nn.Dropout(p=0.2),
-                nn.Linear(config["hidden_size"]//4, 2),
+                nn.Linear(10, 2),
+                nn.Sigmoid()
+            ]
+        self.mlp = nn.Sequential(
+            *seq
+        ).to(device)
+        self.loss = CrossEntropyLoss()
+        self.optimizer = torch.optim.Adam(self.mlp.parameters())
+
+        self.device = device
+
+    def train_head(self, features, label):
+        label = label.to(self.device)
+        yp = self.mlp(features)
+        l = torch.mean(self.loss(yp, label))
+        l.backward()
+        self.optimizer.step()
+
+    def forward(self, features):
+        return self.mlp(features).cpu().detach().numpy()
+    
+    def save(self, path):
+        torch.save(self.state_dict(), path)
+
+    def load(self, path):
+        checkpoint = torch.load(path)
+        self.load_state_dict(checkpoint)
+
+class BLIPDeepHead5(nn.Module):
+    def __init__(self, med_config="BLIP/configs/med_config.json", device="cpu", dropout=False):
+        super().__init__()
+        with open(med_config, "r") as f:
+            config = json.load(f)
+        seq = [
+            nn.Linear(config["hidden_size"], 2),
+            nn.ReLU(),
+            nn.Linear(2, 2),
+            nn.Sigmoid()
+        ]
+        if dropout:
+            seq = [
+                nn.Linear(config["hidden_size"], 2),
+                nn.ReLU(),
+                nn.Dropout(p=0.2),
+                nn.Linear(2, 2),
                 nn.Sigmoid()
             ]
         self.mlp = nn.Sequential(
@@ -323,7 +367,7 @@ class BLIPClassifier(Classifier):
             image_embeds = self.encoder.visual_encoder(image)  
             if self.text_inject:
                 target_len = image_embeds.shape[1]
-                fake = " ".join(["[PAD]"*(target_len-2)])
+                fake = " ".join(["[PAD]"]*(target_len-2))
                 text = tuple(list(text) + [fake])
                 text = self.encoder.tokenizer(text, return_tensors="pt", padding="longest").to(self.device) 
                 

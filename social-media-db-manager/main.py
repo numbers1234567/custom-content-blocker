@@ -108,6 +108,90 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
+    cur: psycopg2.cursor = conn.cursor()
+    cur.execute("""
+        SELECT * 
+        FROM social_post_data
+        WHERE post_id=%s;
+    """, (post.metadata.post_id, ))
+    db_post = cur.fetchone()
+    cur.close()
+    return db_post != None
+
+def get_max_internal_id() -> int:
+    conn = psycopg2.connect(POSTGRES_DB_URL)
+    cur: psycopg2.cursor = conn.cursor()
+
+    cur.execute("""
+        SELECT MAX(internal_id)
+        FROM social_post_data;
+    """)
+
+    result = cur.fetchone()
+
+    max_id = result[0] if result[0]!=None else -1
+    
+    cur.close()
+    conn.close()
+
+    return max_id
+
+def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
+    # Try to connect
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+        cur = conn.cursor()
+    except Exception as e:
+        print(f"[ERROR]: Failed to connect to database!")
+        print("   Error message " + str(e))
+        return False
+
+    # Make sure post has not been added
+    if check_post_exists_db(conn, post):
+        print(f"[Message]: Post {post.metadata.post_id} already exists in db!")
+        return False
+    
+    try:
+        if add_id == None: 
+            add_id = get_max_internal_id(conn)+1
+
+        
+        cur.execute("""
+            INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
+                VALUES (%s, %s, %s, %s, %s);
+        """, (add_id, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
+
+        # Insert extra features here
+
+        # BLIP features
+        try:
+            has_image = len(post.media_data.images_b64) > 0
+            features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0].decode('utf-8') if has_image else None)
+
+            cur.execute("""
+                INSERT INTO blip_features (internal_id, features)
+                    VALUES (%s, %s);
+            """, (add_id, features))
+        except Exception as e:
+            print(f"[ERROR]: Failed to insert BLIP features for {post.metadata.post_id}!")
+            print("   Error message " + str(e))
+
+        conn.commit()
+
+        cur.close()
+        conn.close()
+
+        print(f"[Message]: Inserted post {post.metadata.post_id}.")
+        return True
+
+    except Exception as e:
+        print(f"[ERROR]: Failed to insert post {post.metadata.post_id} into database!")
+        print("   Error message " + str(e))
+
+        cur.close()
+        return False
+
 """
 Add posts to the database from social
     media APIs.
@@ -116,87 +200,6 @@ Expected to run every hour.
 """
 @app.post("/update_post_db")
 async def update_post_db(count : int=2000): 
-    def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
-        cur: psycopg2.cursor = conn.cursor()
-        cur.execute("""
-            SELECT * 
-            FROM social_post_data
-            WHERE post_id=%s;
-        """, (post.metadata.post_id, ))
-        db_post = cur.fetchone()
-        cur.close()
-        return db_post != None
-    
-    def get_max_internal_id() -> int:
-        conn = psycopg2.connect(POSTGRES_DB_URL)
-        cur: psycopg2.cursor = conn.cursor()
-
-        cur.execute("""
-            SELECT MAX(internal_id)
-            FROM social_post_data;
-        """)
-
-        result = cur.fetchone()
-
-        max_id = result[0] if result[0]!=None else -1
-        
-        cur.close()
-        conn.close()
-
-        return max_id
-    
-    def insert_post_db(post : SocialPostBaseData, max_id : int|None = None) -> bool:
-        try:
-            conn = psycopg2.connect(POSTGRES_DB_URL)
-            cur = conn.cursor()
-        except Exception as e:
-            print(f"[ERROR]: Failed to connect to database!")
-            print("   Error message " + str(e))
-            return False
-
-        if check_post_exists_db(conn, post):
-            print(f"[Message]: Post {post.metadata.post_id} already exists in db!")
-            return False
-        
-        try:
-            if max_id == None: 
-                max_id = get_max_internal_id(conn)
-
-            
-            cur.execute("""
-                INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
-                    VALUES (%s, %s, %s, %s, %s);
-            """, (max_id+1, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
-
-            # Insert extra features here
-
-            # BLIP features
-            try:
-                has_image = len(post.media_data.images_b64) > 0
-                features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0].decode('utf-8') if has_image else None)
-
-                cur.execute("""
-                    INSERT INTO blip_features (internal_id, features)
-                        VALUES (%s, %s);
-                """, (max_id+1, features))
-            except Exception as e:
-                print(f"[ERROR]: Failed to insert BLIP features for {post.metadata.post_id}!")
-                print("   Error message " + str(e))
-
-            conn.commit()
-
-            cur.close()
-            conn.close()
-
-            print(f"[Message]: Inserted post {post.metadata.post_id}.")
-            return True
-
-        except Exception as e:
-            print(f"[ERROR]: Failed to insert post {post.metadata.post_id} into database!")
-            print("   Error message " + str(e))
-
-            cur.close()
-            return False
 
     # Add posts to the database
     # Get maximum internal id (One concern is, if two calls to update_post_db() are made,
@@ -224,7 +227,7 @@ async def update_post_db(count : int=2000):
             for post in social_posts:
                 # Insert post in database
                 try:
-                    if insert_post_db(post, max_id=max_id): max_id += 1
+                    if insert_post_db(post, add_id=max_id+1): max_id += 1
                 except Exception as e:
                     print(f"[ERROR]: Failed to insert post {post.metadata.post_id} into database!")
                     print("   Error message: " + str(e))

@@ -15,6 +15,20 @@ services:
     env_file:
       - public-api/local.env
 
+  curator:
+    build: 
+      context: curator
+    ports:
+      - 8002:8002
+    env_file:
+      - curator/local.env
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512mb
+
+
   db:
     build: 
       context: postgres-db

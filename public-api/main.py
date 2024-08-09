@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import os
 
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Union
 
 import json
 import requests
@@ -62,6 +62,8 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
         # Clamp result
         return max(min(result, 1), 0)
 
+def credentials_exist(username : str, password : str):
+    return True
 
 #################
 #   ENDPOINTS   #
@@ -132,3 +134,21 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
             break
 
     return CuratedPostsResponseBody(posts=curated_posts)
+
+class LoginRequestBody(BaseModel):
+    username : str
+    password : str
+
+class LoginResponseBody(BaseModel):
+    user_token : Union[str, None]
+
+
+"""
+A login endpoint which returns a token used
+    for future requests.
+"""
+@app.post("/login")
+def login(request : LoginRequestBody) -> LoginResponseBody:
+    if not credentials_exist(request.username, request.password):
+        return LoginResponseBody(user_token=None)
+    

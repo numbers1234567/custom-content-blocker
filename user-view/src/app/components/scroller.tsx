@@ -21,8 +21,7 @@ export function PostBatch(
   // Get HTML embeds for posts
   useEffect(() => {
     const requestBody : CuratePostsRequestBody = {
-      username : credentials.username, 
-      password : credentials.password, 
+      token : credentials.token,
       before : beforeUTC, 
       count_min : 5, 
       count_max : 10,

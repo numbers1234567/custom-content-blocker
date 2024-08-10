@@ -1,1 +1,2 @@
 export const CURATE_API_PATH = process.env.NEXT_PUBLIC_CURATE_API_URL;
+export const GOOGLE_CLIENT_APP_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_APP_ID;

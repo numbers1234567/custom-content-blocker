@@ -8,8 +8,7 @@ import { Credentials } from "./credentials";
 import { CurationMode } from "./curation_settings";
 
 export type CuratePostsRequestBody = {
-  username : string,
-  password : string,
+  token : string,
   before : number,
   count_max : number,
   count_min : number,

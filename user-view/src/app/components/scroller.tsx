@@ -20,15 +20,7 @@ export function PostBatch(
 
   // Get HTML embeds for posts
   useEffect(() => {
-    const requestBody : CuratePostsRequestBody = {
-      token : credentials.token,
-      before : beforeUTC, 
-      count_min : 5, 
-      count_max : 10,
-      min_score : 0.5,
-      curation_key : curationSettings.curationMode.key, 
-    }
-    getCuratedPosts(requestBody).then((response) => {
+    getCuratedPosts(credentials, curationSettings, beforeUTC).then((response) => {
       // Set html embedding and indicate a new earliest post
       const html = response.posts.map((item)=>item.html);
       const create_utc = response.posts.map((item)=>item.create_utc);

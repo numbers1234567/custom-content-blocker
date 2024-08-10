@@ -7,11 +7,42 @@ import { CURATE_API_PATH } from "./config";
 import { Credentials } from "./credentials";
 import { CurationMode, CurationSetting } from "./curation_settings";
 
-export type CuratePostsRequestBody = {
-  credentials : {
-    token : string
+// Some conversion for transfer
+
+type HTTPCredentials = {
+  token : string,
+}
+
+function toHTTPCredentials(credentials : Credentials) : HTTPCredentials {
+  return {token : credentials.token};
+}
+
+type HTTPCurationMode = {
+  key : string,
+  name : string,
+}
+
+function toHTTPCurationMode(curationMode : CurationMode) : HTTPCurationMode {
+  return {key : curationMode.key, name : curationMode.name};
+}
+
+type HTTPCurationSetting = {
+  curation_mode : HTTPCurationMode,
+  social_media_whitelist : CurationMode[],
+  trending_filters : CurationMode[],
+}
+
+function toHTTPCurationSetting(curationSettings : CurationSetting) : HTTPCurationSetting {
+  return {
+    curation_mode : toHTTPCurationMode(curationSettings.curationMode),
+    social_media_whitelist : curationSettings.socialMediaWhitelist.map((val)=>toHTTPCurationMode(val)),
+    trending_filters : curationSettings.trendingFilters.map((val)=>toHTTPCurationMode(val)),
   }
-  curation_settings : CurationSetting
+}
+
+type CuratePostsRequestBody = {
+  credentials : HTTPCredentials
+  curation_settings : HTTPCurationSetting
   options : {
     before : number,
     count_max : number,
@@ -33,16 +64,16 @@ type CuratePostsResponseBody = {
 
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
-  beforeUTC : number, count_max : number = 10, count_min : number = 5, min_score : number = 0.5) : Promise<CuratePostsResponseBody> {
+  beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
   let result : CuratePostsResponseBody = {posts : []};
   const requestBody : CuratePostsRequestBody = {
-    credentials : credentials,
-    curation_settings : curation_settings,
+    credentials : toHTTPCredentials(credentials),
+    curation_settings : toHTTPCurationSetting(curation_settings),
     options : {
       before : beforeUTC, 
-      count_min : count_min, 
-      count_max : count_max,
-      min_score : min_score,
+      count_min : countMin, 
+      count_max : countMax,
+      min_score : minScore,
     }
   }
   await fetch(`${CURATE_API_PATH}/get_curated_posts`, 

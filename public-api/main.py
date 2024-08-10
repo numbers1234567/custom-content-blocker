@@ -23,6 +23,44 @@ import random
 
 
 ########################
+#   HTTP DATA MODELS   #
+########################
+
+class CurationMode(BaseModel):
+    key : str
+    name : str
+
+class Credentials(BaseModel):
+    token : str
+
+class CurationSetting(BaseModel):
+    curation_mode : CurationMode
+    social_media_whitelist : list[CurationMode]
+    trending_filters : list[CurationMode]
+
+class CuratePostsRequestOptions(BaseModel):
+    before : int  # UTC
+    count_max : int = 10
+    count_min : int = 5
+    min_score : float = 0.5
+
+# get_curated_posts
+class CuratePostsRequestBody(BaseModel):
+    credentials : Credentials
+    curation_settings : CurationSetting
+    options : CuratePostsRequestOptions
+
+class CuratedPost(BaseModel):
+    post_id : str
+    create_utc : int
+    html : str
+    curate_score : float
+
+class CuratedPostsResponseBody(BaseModel):
+    posts : list[CuratedPost]
+
+
+########################
 #   PRIVATE SERVICES   #
 ########################
 
@@ -62,9 +100,6 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
         # Clamp result
         return max(min(result, 1), 0)
 
-def credentials_exist(username : str, password : str):
-    return True
-
 #################
 #   ENDPOINTS   #
 #################
@@ -84,32 +119,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class CuratePostsRequestBody(BaseModel):
-    username : str
-    password : str
-    before : int
-    count_max : int = 20
-    count_min : int = 5
-    min_score : float = 0.5
-    curation_key : str = "full"
-
-class CuratedPost(BaseModel):
-    post_id : str
-    create_utc : int
-    html : str
-    curate_score : float
-
-class CuratedPostsResponseBody(BaseModel):
-    posts : list[CuratedPost]
-
 @app.post("/get_curated_posts")
 async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsResponseBody:
-    username, password, \
+    # Unpack request
+    token, \
     posts_before, count_max, count_min, \
-    min_score, curation_key = \
-        request.username, request.password,\
-        request.before, request.count_max, request.count_min, \
-        request.min_score, request.curation_key
+    min_score, curation_mode = \
+        request.credentials.token,\
+        request.options.before, request.options.count_max, request.options.count_min, \
+        request.options.min_score, request.curation_settings.curation_mode.key
     curated_posts : list[CuratedPost] = []
 
     social_posts = get_recent_posts(posts_before, count_max)
@@ -120,7 +138,7 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         create_utc = post["create_utc"]
         post_id = post["post_id"]
 
-        curation_scores = get_curate_score(post_id, curation_key)
+        curation_scores = get_curate_score(post_id, curation_mode)
 
         curated_posts.append(
             CuratedPost(post_id=post_id, create_utc=create_utc, html=html_embed, curate_score=curation_scores)
@@ -149,6 +167,5 @@ A login endpoint which returns a token used
 """
 @app.post("/login")
 def login(request : LoginRequestBody) -> LoginResponseBody:
-    if not credentials_exist(request.username, request.password):
-        return LoginResponseBody(user_token=None)
+    pass
     

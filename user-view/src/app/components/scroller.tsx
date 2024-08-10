@@ -3,7 +3,7 @@ import { ReactElement, useEffect, useRef, useState } from "react";
 import { SocialPost } from "./social_post";
 import { Credentials } from "../credentials";
 import { CurationSetting } from "../curation_settings";
-import { CuratePostsRequestBody, getCuratedPosts } from "../api_call";
+import { getCuratedPosts } from "../api_call";
 
 type PostBatchProps = {
   credentials : Credentials, 

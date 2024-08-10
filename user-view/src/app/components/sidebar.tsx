@@ -2,10 +2,18 @@ import { useEffect, useState } from "react";
 import { getFilters, getSocialAppFilters, getUserCurationModes } from "../api_call";
 import { Credentials } from "../credentials";
 import { cloneCurationSetting, CurationMode, CurationSetting } from "../curation_settings";
+import { LoginButton } from "./login_button";
+
+type SidebarProps = {
+  credentials : Credentials, 
+  setCredentials : (a : Credentials) => void
+  curationSettings : CurationSetting, 
+  setCurationSettings : (a : CurationSetting) => void,
+};
 
 export function Sidebar({
-  credentials, curationSettings, setCurationSettings
-} : {credentials : Credentials, curationSettings : CurationSetting, setCurationSettings : (a : CurationSetting) => void}) {
+  credentials, curationSettings, setCurationSettings, setCredentials
+} : SidebarProps) {
 
   const [availableCurationModes, setAvailableCurationModes] = useState<CurationMode[]>([]);
   const [availableFilters, setAvailableFilters] = useState<CurationMode[]>([]);
@@ -38,6 +46,7 @@ export function Sidebar({
   }
 
   return <div className="h-screen bg-white w-64 p-4">
+    <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>
     <p>Curation Modes</p>
     {availableCurationModes.map((val)=>{
       // CURATION MODES

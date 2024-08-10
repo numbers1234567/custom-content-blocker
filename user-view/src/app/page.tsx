@@ -8,7 +8,7 @@ import { Credentials } from "./credentials";
 import { CurationSetting } from "./curation_settings";
 
 export default function Home() {
-  const [credentials, setCredentials] = useState<Credentials>({username : "guest", password : ""});
+  const [credentials, setCredentials] = useState<Credentials>({token : ""});
   const [curationSettings, setCurationSettings] = useState<CurationSetting>({
     curationMode : {key : "all", name : "All"},
     socialMediaWhitelist : 
@@ -27,7 +27,7 @@ export default function Home() {
   return (
     <main className="">
       <div className="fixed left-0 top-0">
-        <Sidebar credentials={credentials} curationSettings={curationSettings} setCurationSettings={setCurationSettings}/>
+        <Sidebar credentials={credentials} setCredentials={setCredentials} curationSettings={curationSettings} setCurationSettings={setCurationSettings}/>
       </div>
       <div className="top-0 w-full items-center">
         <PostScroller credentials={credentials} curationSettings={curationSettings}/>

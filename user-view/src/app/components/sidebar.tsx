@@ -46,7 +46,7 @@ export function Sidebar({
   }
 
   return <div className="h-screen bg-white w-64 p-4">
-    <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>
+    {!credentials.isSet && <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>}
     <p>Curation Modes</p>
     {availableCurationModes.map((val)=>{
       // CURATION MODES

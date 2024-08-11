@@ -26,7 +26,7 @@ export function LoginButton({
                     const token = credentialResponse.credential;
                     if (token) {
                         const newCredential = {token : token, isSet : true};
-                        login(credentials).then((success)=>{
+                        login(newCredential).then((success)=>{
                             if (success) {
                                 setCredentials(newCredential);
                                 console.log("Login Successful");

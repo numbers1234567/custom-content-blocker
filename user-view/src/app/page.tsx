@@ -8,7 +8,7 @@ import { Credentials } from "./credentials";
 import { CurationSetting } from "./curation_settings";
 
 export default function Home() {
-  const [credentials, setCredentials] = useState<Credentials>({token : "", isSet : false});
+  const [credentials, setCredentials] = useState<Credentials>({token : "public", isSet : false});
   const [curationSettings, setCurationSettings] = useState<CurationSetting>({
     curationMode : {key : "all", name : "All"},
     socialMediaWhitelist : 

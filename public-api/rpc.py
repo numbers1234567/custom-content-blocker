@@ -5,6 +5,8 @@ import random
 import requests
 import json
 
+from env import *
+
 from functools import cache
 
 @cache

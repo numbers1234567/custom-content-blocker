@@ -9,50 +9,18 @@ from functools import cache
 
 from data_models import *
 from env import *
-
-def url_encode(arg : str):
-    return arg.replace(":", "%3A").replace("/", "%2F")
+from rpc import *
 
 class Session:
     def __init__(self, timeout : int=60*60):
         self.create_time = time.time()
         self.last_action_time = self.create_time
         self.timeout = timeout
-
-    @cache
-    def get_recent_posts(cls, before : int, count : int):
-        # Query post db
-        response = requests.get(f"{POST_DB_MANAGER}/recent_posts?before={before}&count={count}")
-        html_embeds = json.loads(response.content)["html_embeds"]
-        
-        return html_embeds
-    
-    @cache
-    def get_curate_score(cls, post_id : str, curation_key : str) -> float:
-        if curation_key=="half":
-            return random.random()
-        if curation_key=="all":
-            return 1
-        if curation_key=="no_politics":
-            try:
-                response = requests.get(f"{CURATOR}/get_curate_score?post_id={url_encode(post_id)}&curate_key=no_politics")
-            except Exception as e:
-                print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_key}")
-                print("   Error Message: " + str(e))
-                return 1
-            try:
-                result = float(response.content)
-            except Exception as e:
-                print(f"[ERROR]: Could not convert response score to float.")
-                print("   Error Message: " + str(e))
-
-            # Clamp result
-            return max(min(result, 1), 0)
         
     def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, min_score=0.5) -> CuratedPostBatch:
         curated_posts : list[CuratedPost] = []
 
-        social_posts = self.get_recent_posts(posts_before, count_max)
+        social_posts = get_recent_posts(posts_before, count_max)
 
         # Score each post
         for post in social_posts:
@@ -60,7 +28,7 @@ class Session:
             create_utc = post["create_utc"]
             post_id = post["post_id"]
 
-            curation_scores = self.get_curate_score(post_id, curation_mode)
+            curation_scores = get_curate_score(post_id, curation_mode)
 
             curated_posts.append(
                 CuratedPost(post_id=post_id, create_utc=create_utc, html=html_embed, curate_score=curation_scores)

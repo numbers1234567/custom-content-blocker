@@ -36,6 +36,14 @@ class CuratedPostBatch(BaseModel):
 class CuratedPostsResponseBody(CuratedPostBatch):
     pass
 
+class CreateCurationModeRequestBody(BaseModel):
+    credentials : Credentials
+    mode_name : str
+
+class CreateCurationModeResponseBody(BaseModel):
+    credentials : Credentials
+    mode_name : str
+
 class LoginRequestBody(BaseModel):
     credentials : Credentials
 

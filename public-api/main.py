@@ -93,8 +93,12 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
         return LoginResponseBody(success=False)
 
     # Create new session w/ token and email
-    print(idinfo)
+    session_manager.register_session(token, SessionUser(idinfo["email"]))
+    print(session_manager)
 
     # Return success message
     return LoginResponseBody(success=True)
-    
+
+@app.post("/create_curation_mode")
+def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+    pass

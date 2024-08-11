@@ -21,6 +21,10 @@ from functools import cache
 
 import random
 
+# Authentication
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 
 ########################
 #   HTTP DATA MODELS   #
@@ -59,6 +63,12 @@ class CuratedPost(BaseModel):
 class CuratedPostsResponseBody(BaseModel):
     posts : list[CuratedPost]
 
+class LoginRequestBody(BaseModel):
+    credentials : Credentials
+
+class LoginResponseBody(BaseModel):
+    success : bool
+
 
 ########################
 #   PRIVATE SERVICES   #
@@ -66,6 +76,8 @@ class CuratedPostsResponseBody(BaseModel):
 
 POST_DB_MANAGER = os.environ["CONTENT_CURATION_POST_DB_MANAGER"]
 CURATOR = os.environ["CONTENT_CURATION_CURATOR"]
+
+GOOGLE_CLIENT_ID = os.environ["CONTENT_CURATION_GOOGLE_CLIENT_ID"]
 
 @cache
 def get_recent_posts(before : int, count : int=20):
@@ -130,6 +142,13 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         request.options.min_score, request.curation_settings.curation_mode.key
     curated_posts : list[CuratedPost] = []
 
+    try:
+        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        print(idinfo)
+    except ValueError as e:
+        print(f"{token} is not a valid user token!")
+        print("   Message: " + str(e))
+
     social_posts = get_recent_posts(posts_before, count_max)
 
     # Score each post
@@ -153,13 +172,6 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
 
     return CuratedPostsResponseBody(posts=curated_posts)
 
-class LoginRequestBody(BaseModel):
-    username : str
-    password : str
-
-class LoginResponseBody(BaseModel):
-    user_token : Union[str, None]
-
 
 """
 A login endpoint which returns a token used
@@ -167,5 +179,5 @@ A login endpoint which returns a token used
 """
 @app.post("/login")
 def login(request : LoginRequestBody) -> LoginResponseBody:
-    pass
+    return LoginResponseBody(success=True)
     

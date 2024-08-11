@@ -62,6 +62,14 @@ type CuratePostsResponseBody = {
   posts : CuratedPost[],
 }
 
+type LoginRequestBody = {
+  credentials : HTTPCredentials,
+}
+
+type LoginResponseBody = {
+  success : boolean,
+}
+
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
   beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
@@ -86,6 +94,26 @@ export async function getCuratedPosts(
     .then(response => response.json())
     .then(json => { result = {...json}; })
     .catch(error => console.log(error))
+  return result;
+}
+
+export async function login(credentials : Credentials) : Promise<boolean> {
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : LoginRequestBody = {
+    credentials : httpCredentials,
+  }
+  let result = false;
+  await fetch(`${CURATE_API_PATH}/login`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { result = json.success; })
+    .catch(error => console.log(error));
+    
   return result;
 }
 

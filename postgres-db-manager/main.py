@@ -243,7 +243,6 @@ async def update_post_db(count : int=2000):
 @app.get("/recent_posts")
 # just need to confirm I can retrieve posts from the database, then I can add some fancy curation features.
 async def get_recent_posts(before : int, count : int=20):
-    if count > 100: count = 100
     with psycopg2.connect(POSTGRES_DB_URL) as conn:
         cur = conn.cursor()
         # New to SQL, so there might be a more performant way to do this.

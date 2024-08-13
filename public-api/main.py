@@ -67,7 +67,20 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         request.options.before, request.options.count_max, request.options.count_min, \
         request.options.min_score, request.curation_settings.curation_mode.key
     
-    curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, min_score=min_score)
+    if token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    if count_max > 50 or count_max <= 0:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: 0 < count_max <= 50")
+    if count_min > 50 or count_min <= 0:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: 0 < count_min <= 50")
+    if count_min > count_max:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: count_min <= count_max")
+    
+    try:
+        curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, min_score=min_score)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to retrieve curated posts")
 
     return CuratedPostsResponseBody(posts=curated_posts.posts)
 

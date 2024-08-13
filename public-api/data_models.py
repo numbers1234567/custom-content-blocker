@@ -39,10 +39,10 @@ class CuratedPostsResponseBody(CuratedPostBatch):
 class CreateCurationModeRequestBody(BaseModel):
     credentials : Credentials
     mode_name : str
+    preset_key : str|None = None
 
 class CreateCurationModeResponseBody(BaseModel):
-    credentials : Credentials
-    mode_name : str
+    curation_mode : CurationMode
 
 class LoginRequestBody(BaseModel):
     credentials : Credentials

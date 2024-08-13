@@ -43,6 +43,9 @@ class Session:
 
         return CuratedPostBatch(posts=curated_posts)
     
+    def create_curation_mode(self, mode_name : str, preset_key : str|None) -> CurationMode:
+        pass
+    
 class SessionUser(Session):
     def __init__(self, email : str, timeout : int=60*60):
         super().__init__(timeout)

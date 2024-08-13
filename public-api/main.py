@@ -3,7 +3,7 @@
 ###############
 
 # API
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
@@ -88,17 +88,25 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
 
         userid = idinfo['sub']
     except ValueError as e:
-        print("[ERROR]: Failed to log in a user.")
-        print("   Message: " + str(e))
-        return LoginResponseBody(success=False)
+        raise HTTPException(status_code=401, detail="Invalid token")
 
     # Create new session w/ token and email
     session_manager.register_session(token, SessionUser(idinfo["email"]))
-    print(session_manager)
 
     # Return success message
     return LoginResponseBody(success=True)
 
 @app.post("/create_curation_mode")
 def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
-    pass
+    # Unpack request
+    token, mode_name, preset_key = request.credentials.token
+    
+    if token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    try:
+        curation_mode = session_manager[token].create_curation_mode(mode_name, preset_key)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to create curation mode.")
+
+    return CreateCurationModeResponseBody(curation_mode=curation_mode)

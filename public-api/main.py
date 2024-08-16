@@ -96,6 +96,9 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
     token = credentials.token
 
     #  Authenticate token
+    if token in session_manager:
+        raise HTTPException(status_code=401, detail="Already logged in with this token!")
+    
     try:
         idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
 

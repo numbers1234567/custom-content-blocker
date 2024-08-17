@@ -24,7 +24,7 @@ CREATE TABLE curation_modes (
     primary_user INT NOT NULL REFERENCES user_credentials(user_id),
     curation_id INT NOT NULL UNIQUE,
     curation_name VARCHAR(20),
-    curation_key CHAR(40) UNIQUE,
+    curation_key VARCHAR(40) UNIQUE,
     create_utc INT,
     PRIMARY KEY (curation_id)
 );

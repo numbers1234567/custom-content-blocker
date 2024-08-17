@@ -26,7 +26,17 @@ CREATE TABLE curation_modes (
     curation_name VARCHAR(20),
     curation_key CHAR(40) UNIQUE,
     create_utc INT,
-    PRIMARY KEY (primary_user, curation_id)
+    PRIMARY KEY (curation_id)
+);
+
+CREATE TABLE blip_curation_heads (
+    primary_user INT NOT NULL REFERENCES curation_modes(primary_user),
+    curation_id INT NOT NULL REFERENCES curation_modes(curation_id),
+    weight1 DECIMAL[768][10],
+    weight2 DECIMAL[10][2],
+    bias1 DECIMAL[10],
+    bias2 DECIMAL[2],
+    PRIMARY KEY (curation_id)
 );
 
 COPY social_post_data

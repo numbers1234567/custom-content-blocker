@@ -16,13 +16,13 @@ CREATE TABLE blip_features (
 CREATE TABLE user_credentials (
     user_id INT NOT NULL,
     create_utc INT NOT NULL,
-    email VARCHAR(50) NOT NULL UNIQUE,
+    email VARCHAR(50) NOT NULL,
     PRIMARY KEY (user_id)
 );
 
 CREATE TABLE curation_modes (
-    primary_user INT NOT NULL REFERENCES user_credentials(user_id),
-    curation_id INT NOT NULL,
+    primary_user INT NOT NULL REFERENCES user_credentials(user_id) UNIQUE,
+    curation_id INT NOT NULL UNIQUE,
     curation_name VARCHAR(20),
     curation_key CHAR(40) UNIQUE,
     create_utc INT,

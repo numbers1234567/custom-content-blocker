@@ -21,7 +21,7 @@ CREATE TABLE user_credentials (
 );
 
 CREATE TABLE curation_modes (
-    primary_user INT NOT NULL REFERENCES user_credentials(user_id) UNIQUE,
+    primary_user INT NOT NULL REFERENCES user_credentials(user_id),
     curation_id INT NOT NULL UNIQUE,
     curation_name VARCHAR(20),
     curation_key CHAR(40) UNIQUE,
@@ -30,7 +30,6 @@ CREATE TABLE curation_modes (
 );
 
 CREATE TABLE blip_curation_heads (
-    primary_user INT NOT NULL REFERENCES curation_modes(primary_user),
     curation_id INT NOT NULL REFERENCES curation_modes(curation_id),
     weight1 DECIMAL[768][10],
     weight2 DECIMAL[10][2],
@@ -49,3 +48,17 @@ FROM '/docker-entrypoint-initdb.d/test_blip_data.csv'
 DELIMITER E'\t'
 CSV HEADER;
 
+COPY user_credentials
+FROM '/docker-entrypoint-initdb.d/test_user_data.csv'
+DELIMITER E'\t'
+CSV HEADER;
+
+COPY curation_modes
+FROM '/docker-entrypoint-initdb.d/test_curation_data.csv'
+DELIMITER E'\t'
+CSV HEADER;
+
+COPY blip_curation_heads
+FROM '/docker-entrypoint-initdb.d/test_blip_heads.csv'
+DELIMITER E'\t'
+CSV HEADER;

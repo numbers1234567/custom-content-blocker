@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import os
 
 from pydantic import BaseModel
-from typing import List,Union
+from typing import List,Union,Tuple
 
 import json
 import requests
@@ -66,6 +66,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Weight, Bias
+LinearLayer = Tuple[np.array, np.array]
+@cache
+def get_blip_params(curate_key : str) -> Union[Tuple[LinearLayer, LinearLayer],None]:
+    pass
 
 @cache
 def get_post_blip_features(post_id : str) -> Union[np.array,None]:
@@ -130,18 +136,28 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float:
         return random.random()
     if curate_key=="all":
         return 1
-    if curate_key=="no_politics":
-        features = get_post_blip_features(post_id)
-
-        if features is None:
-            return 1
-        with torch.no_grad():
-            features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
-
-            result = politics_head(features).cpu().detach().numpy()[0]
-        return result[0]/(result[0]+result[1])
     
-    return 1
+    features = get_post_blip_features(post_id)
+
+    if features is None:
+        return 1
+    
+    params = get_blip_params(curate_key)
+    if params is None:
+        return 1
+    
+    l1, l2 = params
+    head = BLIPHead()
+    head.mlp[0].weight = nn.Parameter(torch.Tensor(l1[0]))
+    head.mlp[0].bias = nn.Parameter(torch.Tensor(l1[1]))
+    head.mlp[1].weight = nn.Parameter(torch.Tensor(l2[0]))
+    head.mlp[1].bias = nn.Parameter(torch.Tensor(l2[1]))
+    
+    with torch.no_grad():
+        features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
+
+        result = head(features).cpu().detach().numpy()[0]
+    return result[0]/(result[0]+result[1])
 
 @app.get("/get_curate_score")
 async def get_curate_score(post_id : str, curate_key : str) -> float:

@@ -33,9 +33,11 @@ import requests
 
 import multiprocessing as mp
 
-from typing import Union
+from typing import Union,Dict
 
 import time
+
+from data_models import *
 
 
 #################
@@ -199,7 +201,7 @@ Add posts to the database from social
 Expected to run every hour.
 """
 @app.post("/update_post_db")
-async def update_post_db(count : int=2000): 
+async def update_post_db(): 
 
     # Add posts to the database
     # Get maximum internal id (One concern is, if two calls to update_post_db() are made,
@@ -241,8 +243,7 @@ async def update_post_db(count : int=2000):
     return {}
 
 @app.get("/recent_posts")
-# just need to confirm I can retrieve posts from the database, then I can add some fancy curation features.
-async def get_recent_posts(before : int, count : int=20):
+async def get_recent_posts(before : int, count : int=20) -> GetRecentPostsResponseBody:
     with psycopg2.connect(POSTGRES_DB_URL) as conn:
         cur = conn.cursor()
         # New to SQL, so there might be a more performant way to do this.
@@ -255,4 +256,6 @@ async def get_recent_posts(before : int, count : int=20):
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()
-    return {"html_embeds" : [{"html" : embed, "create_utc" : create_utc, "post_id" : post_id}  for (embed,create_utc,post_id) in embeds]}
+    return GetRecentPostsResponseBody(
+        html_embeds=[HTMLEmbed(html=html,create_utc=create_utc,post_id=post_id) for (html, create_utc, post_id) in embeds]
+    )

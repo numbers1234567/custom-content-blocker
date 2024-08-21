@@ -309,3 +309,56 @@ async def create_curation_mode(request : CreateCurationModeRequestBody) -> Creat
     if tries >= MAX_TRIES:
         print(f"[ERROR]: Failed to insert curation mode with user {uid} and name {curation_name}.")
         raise HTTPException(status_code=500, detail="")
+    
+def get_max_uid() -> int:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials.")
+    
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT MAX(curation_id)
+        FROM curation_modes;
+    """)
+
+    result = cur.fetchone()
+
+    max_id = result[0] if result[0]!=None else -1
+    
+    cur.close()
+    conn.close()
+
+    return max_id
+    
+max_uid_lock = mp.Lock()
+@app.post("/sign_up_user")
+async def sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBody:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials.")\
+    # Unpack request
+    email = request.credentials.email
+    
+    cur = conn.cursor()
+    with max_uid_lock:
+        next_uid = get_max_uid() + 1
+        create_utc = time.time()
+        try:  # Insert user
+            cur.execute("""
+                INSERT INTO user_credentials (user_id, create_utc, email)
+                VALUES (%s, %s, %s);
+            """, (next_uid, create_utc, email))
+            conn.commit()
+
+            conn.close()
+            cur.close()
+
+        except Exception as e:
+            print(f"[ERROR]: Failed to create user {email}.")
+            print("   Message: " + str(e))
+            raise HTTPException(status_code=500, detail=f"Failed to create user {email}.")
+    
+    return SignUpUserResponseBody(success=True)

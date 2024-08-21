@@ -18,3 +18,12 @@ class CreateCurationModeResponseBody(BaseModel):
     curation_key : str
     curation_name : str
     curation_id : int
+
+class UserCredentials(BaseModel):
+    email : str
+
+class SignUpUserRequestBody(BaseModel):
+    credentials : UserCredentials
+
+class SignUpUserResponseBody(BaseModel):
+    success : bool

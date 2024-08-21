@@ -285,6 +285,8 @@ whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM
 async def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
     uid,curation_name = request.user_id,request.curation_name
+    curation_key : str|None = None
+    curation_id : str|None = None
 
     create_utc = time.time()
 
@@ -294,14 +296,15 @@ async def create_curation_mode(request : CreateCurationModeRequestBody) -> Creat
     while tries < MAX_TRIES:  # Either a statistical anomaly (curation key exists) or an unknown exception
         try:
             with psycopg2.connect(POSTGRES_DB_URL) as conn, max_curate_id_lock:
-                key = "".join([random.choice(whitelist_key_characters) for _ in range(40)])
+                curation_key = "".join([random.choice(whitelist_key_characters) for _ in range(40)])
+                curation_id = get_max_curate_id()+1
                 cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO curation_modes (primary_user, curation_id, curation_name, curation_key, create_utc) 
                     VALUES (%s, %s, %s, %s, %s);
-                """, (uid, get_max_curate_id()+1, curation_name, key, create_utc))
-
+                """, (uid, curation_id, curation_name, curation_key, create_utc))
                 conn.commit()
+                cur.close()
                 
         except:
             pass
@@ -309,6 +312,12 @@ async def create_curation_mode(request : CreateCurationModeRequestBody) -> Creat
     if tries >= MAX_TRIES:
         print(f"[ERROR]: Failed to insert curation mode with user {uid} and name {curation_name}.")
         raise HTTPException(status_code=500, detail="")
+    
+    return CreateCurationModeResponseBody(
+        curation_key=curation_key,
+        curation_name=curation_name,
+        curation_id=curation_id,
+    )
     
 def get_max_uid() -> int:
     try:

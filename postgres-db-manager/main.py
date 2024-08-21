@@ -11,7 +11,7 @@ Definition for a service which can be
 ###############
 
 # API
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
@@ -38,6 +38,7 @@ from typing import Union,Dict
 import time
 
 from data_models import *
+import random
 
 
 #################
@@ -259,3 +260,52 @@ async def get_recent_posts(before : int, count : int=20) -> GetRecentPostsRespon
     return GetRecentPostsResponseBody(
         html_embeds=[HTMLEmbed(html=html,create_utc=create_utc,post_id=post_id) for (html, create_utc, post_id) in embeds]
     )
+
+def get_max_curate_id():
+    conn = psycopg2.connect(POSTGRES_DB_URL)
+    cur: psycopg2.cursor = conn.cursor()
+
+    cur.execute("""
+        SELECT MAX(curation_id)
+        FROM curation_modes;
+    """)
+
+    result = cur.fetchone()
+
+    max_id = result[0] if result[0]!=None else -1
+    
+    cur.close()
+    conn.close()
+
+    return max_id
+
+max_curate_id_lock = mp.Lock()
+whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+@app.post("/create_curation_mode")
+async def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+    # Unpack request
+    uid,curation_name = request.user_id,request.curation_name
+
+    create_utc = time.time()
+
+    # DB should reject non-unique keys, so keep trying
+    tries = 0
+    MAX_TRIES = 4
+    while tries < MAX_TRIES:  # Either a statistical anomaly (curation key exists) or an unknown exception
+        try:
+            with psycopg2.connect(POSTGRES_DB_URL) as conn, max_curate_id_lock:
+                key = "".join([random.choice(whitelist_key_characters) for _ in range(40)])
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO curation_modes (primary_user, curation_id, curation_name, curation_key, create_utc) 
+                    VALUES (%s, %s, %s, %s, %s);
+                """, (uid, get_max_curate_id()+1, curation_name, key, create_utc))
+
+                conn.commit()
+                
+        except:
+            pass
+        tries += 1
+    if tries >= MAX_TRIES:
+        print(f"[ERROR]: Failed to insert curation mode with user {uid} and name {curation_name}.")
+        raise HTTPException(status_code=500, detail="")

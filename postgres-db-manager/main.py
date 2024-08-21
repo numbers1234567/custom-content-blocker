@@ -328,8 +328,8 @@ def get_max_uid() -> int:
     cur = conn.cursor()
     
     cur.execute("""
-        SELECT MAX(curation_id)
-        FROM curation_modes;
+        SELECT MAX(user_id)
+        FROM user_credentials;
     """)
 
     result = cur.fetchone()

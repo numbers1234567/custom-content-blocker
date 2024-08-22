@@ -371,3 +371,29 @@ async def sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBod
             raise HTTPException(status_code=500, detail=f"Failed to create user {email}.")
     
     return SignUpUserResponseBody(success=True)
+
+@app.post("/get_user_data")
+async def get_user_data(request : GetUserDataRequestBody) -> GetUserDataResponseBody:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials")
+    
+    email = request.email
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT email, user_id, create_utc FROM user_credentials
+            WHERE email=%s;
+        """, (email, ))
+        result = cur.fetchone()
+    except:
+        raise HTTPException(status_code=500, detail="Failed to query database.")
+    print(result)
+    if result==None:
+        raise HTTPException(status_code=400, detail=f"User {email} does not exist.")
+
+    email,user_id,create_utc = result
+    return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc)
+    

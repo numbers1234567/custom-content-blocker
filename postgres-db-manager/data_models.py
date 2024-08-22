@@ -27,3 +27,11 @@ class SignUpUserRequestBody(BaseModel):
 
 class SignUpUserResponseBody(BaseModel):
     success : bool
+
+class GetUserDataRequestBody(BaseModel):
+    email : str
+
+class GetUserDataResponseBody(BaseModel):
+    email : str
+    uid : int
+    create_utc : int

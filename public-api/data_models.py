@@ -49,3 +49,12 @@ class LoginRequestBody(BaseModel):
 
 class LoginResponseBody(BaseModel):
     success : bool
+
+class UserCredentials(BaseModel):
+    token_google : str
+
+class SignUpUserRequestBody(BaseModel):
+    credentials : UserCredentials
+
+class SignUpUserResponseBody(BaseModel):
+    success : bool

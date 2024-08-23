@@ -40,3 +40,22 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
 
         # Clamp result
         return max(min(result, 1), 0)
+    
+def get_user_data(email : str) -> Dict|None:
+    response = requests.post(f"{POST_DB_MANAGER}/get_user_data", json={
+        "email" : email
+    })
+    
+    if response.status_code < 200 or response.status_code > 299:
+        return None
+    
+    return response.content
+    
+def sign_up_user_db_manager(email : str):
+    response = requests.post(f"{POST_DB_MANAGER}/sign_up_user", json={
+        "credentials" : {
+            "email" : email
+        }
+    })
+
+    return (response.status_code >= 200 and response.status_code <= 299, response.status_code)

@@ -46,11 +46,20 @@ class Session:
     def create_curation_mode(self, mode_name : str, preset_key : str|None) -> CurationMode:
         pass
     
+# An authenticated session
 class SessionUser(Session):
     def __init__(self, email : str, timeout : int=60*60):
         super().__init__(timeout)
         self.email = email
+        user_data = get_user_data(email)
+        print(user_data)
+        if user_data==None:
+            if not self.sign_up_user():
+                raise ValueError(f"Failed to create user {email}.")
 
+    def sign_up_user(self) -> bool:
+        success, status = sign_up_user_db_manager(self.email)
+        return success
 
 class SessionManager:
     def __init__(self, default_sessions:Dict[str, Session]={}):

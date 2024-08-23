@@ -16,7 +16,7 @@ CREATE TABLE blip_features (
 CREATE TABLE user_credentials (
     user_id INT NOT NULL,
     create_utc INT NOT NULL,
-    email VARCHAR(50) NOT NULL,
+    email VARCHAR(50) NOT NULL UNIQUE,
     PRIMARY KEY (user_id)
 );
 

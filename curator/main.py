@@ -3,7 +3,7 @@
 ###############
 
 # API
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
@@ -24,6 +24,8 @@ import asyncio
 import time
 
 import random
+
+from data_models import *
 
 # Data Processing
 import numpy as np
@@ -69,9 +71,36 @@ app.add_middleware(
 
 # Weight, Bias
 LinearLayer = Tuple[np.array, np.array]
-@cache
 def get_blip_params(curate_key : str) -> Union[Tuple[LinearLayer, LinearLayer],None]:
-    pass
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials")
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT weight1,weight2,bias1,bias2 FROM blip_curation_heads
+            WHERE curation_id IN (
+                SELECT curation_id FROM curation_modes WHERE curation_key=%s
+            );
+        """, (curate_key, ))
+        result = cur.fetchone()
+    except:
+        raise HTTPException(status_code=500, detail="Failed to query database.")
+    if result==None:
+        raise HTTPException(status_code=400, detail=f"Curation key {curate_key} does not exist.")
+    weight1,weight2,bias1,bias2 = result
+    
+    weight1,weight2,bias1,bias2 = \
+        [[float(i) for i in row] for row in weight1], \
+        [[float(i) for i in row] for row in weight2], \
+        [float(i) for i in bias1], \
+        [float(i) for i in bias2]
+    weight1,weight2,bias1,bias2 = np.array(weight1),np.array(weight2),np.array(bias1),np.array(bias2)
+    weight1 = np.transpose(weight1, (1,0))
+    weight2 = np.transpose(weight2, (1,0))
+    return ((weight1, bias1), (weight2, bias2))
 
 @cache
 def get_post_blip_features(post_id : str) -> Union[np.array,None]:
@@ -80,6 +109,7 @@ def get_post_blip_features(post_id : str) -> Union[np.array,None]:
         cur = conn.cursor()
     except:
         print("[ERROR]: Failed to connect to Postgres database. Check credentials.")
+        return None
 
     try:
         # Get post's BLIP features
@@ -91,7 +121,7 @@ def get_post_blip_features(post_id : str) -> Union[np.array,None]:
                 SELECT s.internal_id
                 FROM social_post_data as s
                 WHERE s.post_id LIKE %s
-                )
+                );
         """, (post_id,))
     except Exception as e:
         print("[ERROR]: Failed to query for BLIP features.")
@@ -131,7 +161,7 @@ politics_head.load_state_dict(torch.load("blip_deep_mlp_4_e5", map_location=torc
 politics_head.eval()
 
 @cache
-def get_blip_curate_score(post_id : str, curate_key : str) -> float:
+def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     if curate_key=="half":
         return random.random()
     if curate_key=="all":
@@ -140,18 +170,20 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float:
     features = get_post_blip_features(post_id)
 
     if features is None:
-        return 1
+        print(f"[LOG]: No BLIP features for {post_id}")
+        return None
     
     params = get_blip_params(curate_key)
     if params is None:
-        return 1
+        print(f"[ERROR]: Could not find parameters for curate_key {curate_key}!")
+        return None
     
     l1, l2 = params
     head = BLIPHead()
     head.mlp[0].weight = nn.Parameter(torch.Tensor(l1[0]))
     head.mlp[0].bias = nn.Parameter(torch.Tensor(l1[1]))
-    head.mlp[1].weight = nn.Parameter(torch.Tensor(l2[0]))
-    head.mlp[1].bias = nn.Parameter(torch.Tensor(l2[1]))
+    head.mlp[3].weight = nn.Parameter(torch.Tensor(l2[0]))
+    head.mlp[3].bias = nn.Parameter(torch.Tensor(l2[1]))
     
     with torch.no_grad():
         features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
@@ -161,7 +193,8 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float:
 
 @app.get("/get_curate_score")
 async def get_curate_score(post_id : str, curate_key : str) -> float:
-    return get_blip_curate_score(post_id, curate_key)
+    blip_score = get_blip_curate_score(post_id, curate_key)
+    return blip_score if blip_score else 1
 
 if __name__=="__main__":
     # Some unit tests here

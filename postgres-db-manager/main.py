@@ -396,4 +396,43 @@ async def get_user_data(request : GetUserDataRequestBody) -> GetUserDataResponse
 
     email,user_id,create_utc = result
     return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc)
-    
+
+@app.post("/get_blip_head")
+async def get_blip_head(request : GetBLIPHeadRequestBody) -> GetBLIPHeadResponseBody:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials")
+
+    # Unpack request
+    curate_key = request.curate_key
+
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT weight1,weight2,bias1,bias2 FROM blip_curation_heads
+            WHERE curation_id IN (
+                SELECT curation_id FROM curation_modes WHERE curation_key=%s
+            );
+        """, (curate_key, ))
+        result = cur.fetchone()
+    except:
+        raise HTTPException(status_code=500, detail="Failed to query database.")
+    if result==None:
+        raise HTTPException(status_code=400, detail=f"Curation key {curate_key} does not exist.")
+    weight1,weight2,bias1,bias2 = result
+    print(len(weight1), len(weight1[0]), len(weight2), len(weight2[0]), len(bias1), len(bias2))
+    print(float(bias1[0]))
+    weight1,weight2,bias1,bias2 = \
+        [[float(i) for i in row] for row in weight1], \
+        [[float(i) for i in row] for row in weight2], \
+        [float(i) for i in bias1], \
+        [float(i) for i in bias2]
+    return GetBLIPHeadResponseBody(
+        params=BLIPParams(
+            weight1=weight1,
+            weight2=weight2,
+            bias1=bias1,
+            bias2=bias2,
+        ),
+    )

@@ -55,25 +55,38 @@ _POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
 POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
 
 # Social Media APIs
-_REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
-_REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
-_REDDIT_API_PASSWORD      = os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
-_REDDIT_API_USER_AGENT    = os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
-_REDDIT_API_USERNAME      = os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+reddit_api_access = True
+try:
+    _REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
+    _REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
+    _REDDIT_API_PASSWORD      = os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
+    _REDDIT_API_USER_AGENT    = os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
+    _REDDIT_API_USERNAME      = os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+except:
+    print("[LOG]: No access to Reddit API. Continuing without.")
+    reddit_api_access = False
 
 # HuggingFace inference endpoints
-_HUGGINGFACE_ENDPOINT_URL  = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_URL"]
-_HUGGINGFACE_ENDPOINT_NAME = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_NAME"]
-_HUGGINGFACE_ACCESS_TOKEN  = os.environ["CONTENT_CURATION_HUGGINGFACE_ACCESS_TOKEN"]
+huggingface_access = True
+try:
+    _HUGGINGFACE_ENDPOINT_URL  = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_URL"]
+    _HUGGINGFACE_ENDPOINT_NAME = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_NAME"]
+    _HUGGINGFACE_ACCESS_TOKEN  = os.environ["CONTENT_CURATION_HUGGINGFACE_ACCESS_TOKEN"]
+except:
+    print("[LOG]: No access to HuggingFace endpoint. Continuing without.")
+    huggingface_access = False
 
 
 ############################
 #   THIRD PARTY SERVICES   #
 ############################
 
-huggingface_blip_endpoint = get_inference_endpoint(name=_HUGGINGFACE_ENDPOINT_NAME, token=_HUGGINGFACE_ACCESS_TOKEN)
+huggingface_blip_endpoint = None
+if huggingface_access:
+    huggingface_blip_endpoint = get_inference_endpoint(name=_HUGGINGFACE_ENDPOINT_NAME, token=_HUGGINGFACE_ACCESS_TOKEN)
 
 def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=None):
+    if not huggingface_blip_endpoint: return None
     body = {
         "inputs" : {
             "text" : text, 
@@ -87,9 +100,8 @@ def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=N
     return feature_vector
 
 
-SOCIAL_CLIENTS = [
-    RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT),
-]
+SOCIAL_CLIENTS = []
+if reddit_api_access: SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
 
 
 #################
@@ -203,7 +215,8 @@ Expected to run every hour.
 """
 @app.post("/update_post_db")
 async def update_post_db(): 
-
+    if not huggingface_blip_endpoint:
+        raise HTTPException(status_code=400, detail="Server does not have access to HuggingFace endpoint.")
     # Add posts to the database
     # Get maximum internal id (One concern is, if two calls to update_post_db() are made,
     #  they might both get the same maximum internal id, and there will be a conflict
@@ -421,8 +434,7 @@ async def get_blip_head(request : GetBLIPHeadRequestBody) -> GetBLIPHeadResponse
     if result==None:
         raise HTTPException(status_code=400, detail=f"Curation key {curate_key} does not exist.")
     weight1,weight2,bias1,bias2 = result
-    print(len(weight1), len(weight1[0]), len(weight2), len(weight2[0]), len(bias1), len(bias2))
-    print(float(bias1[0]))
+    
     weight1,weight2,bias1,bias2 = \
         [[float(i) for i in row] for row in weight1], \
         [[float(i) for i in row] for row in weight2], \

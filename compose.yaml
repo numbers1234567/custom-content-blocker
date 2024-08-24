@@ -1,11 +1,11 @@
 services:
   post-db-manager:
     build:
-      context: social-media-db-manager
+      context: postgres-db-manager
     ports:
       - 8000:8000
     env_file:
-      - social-media-db-manager/local.env
+      - postgres-db-manager/local.env
 
   public-api:
     build:

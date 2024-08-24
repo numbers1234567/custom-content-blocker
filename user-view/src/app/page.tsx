@@ -3,12 +3,31 @@ import Image from "next/image";
 import { PostScroller } from "./components/scroller";
 import { SocialPost } from "./components/social_post";
 import { Sidebar } from "./components/sidebar";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Credentials } from "./credentials";
 import { CurationSetting } from "./curation_settings";
+import { login } from "./api_call";
+
+function getToken() {
+  return "public";
+  const cname="token";
+  let name = cname + "=";
+  let decodedCookie = decodeURIComponent(document.cookie);
+  let ca = decodedCookie.split(';');
+  for(let i = 0; i <ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) == ' ') {
+          c = c.substring(1);
+      }
+      if (c.indexOf(name) == 0) {
+          return c.substring(name.length, c.length);
+      }
+  }
+  return "public";
+}
 
 export default function Home() {
-  const [credentials, setCredentials] = useState<Credentials>({token : "public", isSet : false});
+  const [credentials, setCredentials] = useState<Credentials>({token : getToken(), isSet : getToken()!="public"});
   const [curationSettings, setCurationSettings] = useState<CurationSetting>({
     curationMode : {key : "all", name : "All"},
     socialMediaWhitelist : 
@@ -21,8 +40,9 @@ export default function Home() {
       ],
     trendingFilters : [],
   });
-
-  // Maybe some auto-login using cookies here
+  useEffect(()=>{
+    if (credentials.isSet) login(credentials);
+  }, [credentials]);
 
   return (
     <main className="">

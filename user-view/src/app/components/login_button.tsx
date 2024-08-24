@@ -8,16 +8,22 @@ type LoginButtonProps = {
     setCredentials : (a : Credentials)=>void,
 }
 
+function setToken(cvalue : string) {
+    const cname = "token";
+    const exdays = 30;
+    const d = new Date();
+    d.setTime(d.getTime() + (exdays*24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/";
+}
+
 export function LoginButton({
     credentials, setCredentials
 } : LoginButtonProps) {
     if (!GOOGLE_CLIENT_APP_ID)
         throw new Error("[FATAL ERROR]: GOOGLE_CLIENT_APP_ID IS UNDEFINED")
 
-    // Login with a token
-    function curatorLogin(token : string) {
-        
-    }
+
 
     return <>
         <GoogleOAuthProvider clientId={GOOGLE_CLIENT_APP_ID}> 
@@ -29,6 +35,7 @@ export function LoginButton({
                         login(newCredential).then((success)=>{
                             if (success) {
                                 setCredentials(newCredential);
+                                setToken(newCredential.token);
                                 console.log("Login Successful");
                             }
                             else {

@@ -33,12 +33,15 @@ import requests
 
 import multiprocessing as mp
 
-from typing import Union,Dict
+from typing import Union,Dict,Tuple
+from collections.abc import Iterable
 
 import time
 
 from data_models import *
 import random
+
+import numpy as np
 
 
 #################
@@ -122,6 +125,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def get_user_data(email : str) -> Tuple[str,str,str]:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise Exception(status_code=500, detail="Failed to connect to database. Check credentials")
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT email, user_id, create_utc FROM user_credentials
+            WHERE email=%s;
+        """, (email, ))
+        result = cur.fetchone()
+    except:
+        raise Exception(status_code=500, detail="Failed to query database.")
+    
+    if result==None:
+        raise Exception(status_code=400, detail=f"User {email} does not exist.")
+
+    email,user_id,create_utc = result
+    return email,user_id,create_utc
 
 def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
     cur: psycopg2.cursor = conn.cursor()
@@ -292,40 +316,76 @@ def get_max_curate_id():
 
     return max_id
 
+def create_formatted_str_array(arr : Iterable[any]) -> str:
+    return "{" + ",".join([str(i) for i in arr]) + "}"
+
 max_curate_id_lock = mp.Lock()
 whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
 @app.post("/create_curation_mode")
-async def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+async def _endpoint_create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
-    uid,curation_name = request.user_id,request.curation_name
+    email,curation_name = request.email,request.curation_name
     curation_key : str|None = None
     curation_id : str|None = None
 
-    create_utc = time.time()
+    email,user_id,_ = get_user_data(email)
 
+    create_utc = time.time()
+    max_curate_id_lock.acquire()
     # DB should reject non-unique keys, so keep trying
+    curation_key = ""
     tries = 0
     MAX_TRIES = 4
     while tries < MAX_TRIES:  # Either a statistical anomaly (curation key exists) or an unknown exception
         try:
-            with psycopg2.connect(POSTGRES_DB_URL) as conn, max_curate_id_lock:
+            with psycopg2.connect(POSTGRES_DB_URL) as conn:
                 curation_key = "".join([random.choice(whitelist_key_characters) for _ in range(40)])
                 curation_id = get_max_curate_id()+1
                 cur = conn.cursor()
                 cur.execute("""
                     INSERT INTO curation_modes (primary_user, curation_id, curation_name, curation_key, create_utc) 
                     VALUES (%s, %s, %s, %s, %s);
-                """, (uid, curation_id, curation_name, curation_key, create_utc))
+                """, (user_id, curation_id, curation_name, curation_key, create_utc))
                 conn.commit()
                 cur.close()
+            break
                 
-        except:
+        except Exception as e:
+            print(f"[ERROR]: Attempt {tries+1} to insert {curation_name} for {user_id} failed!")
+            print("   Message: " + str(e))
             pass
         tries += 1
     if tries >= MAX_TRIES:
-        print(f"[ERROR]: Failed to insert curation mode with user {uid} and name {curation_name}.")
+        print(f"[ERROR]: Failed to insert curation mode with user {user_id} and name {curation_name}.")
+        max_curate_id_lock.release()
         raise HTTPException(status_code=500, detail="")
+
+    # Create BLIP head
+    stdv1 = 1. / np.sqrt(768)
+    stdv2 = 1. / np.sqrt(10)
+
+    w1,b1 = np.random.rand(768, 10)*(2*stdv1) - stdv1, np.random.rand(10)*(2*stdv1) - stdv1
+    w2,b2 = np.random.rand(10, 2)*(2*stdv2) - stdv2, np.random.rand(2)*(2*stdv2) - stdv2
+
+    # Insert BLIP head
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO blip_curation_heads (curation_id,weight1,weight2,bias1,bias2)
+            VALUES (%s, %s, %s, %s, %s);
+        """, (curation_id, 
+              create_formatted_str_array([create_formatted_str_array(row) for row in w1]), 
+              create_formatted_str_array([create_formatted_str_array(row) for row in w2]),
+              create_formatted_str_array(b1),
+              create_formatted_str_array(b2)))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[ERROR]: Failed to insert BLIP head.")
+        max_curate_id_lock.release()
+        raise HTTPException(status_code=500, detail="Failed to insert BLIP head")
     
+    max_curate_id_lock.release()
     return CreateCurationModeResponseBody(
         curation_key=curation_key,
         curation_name=curation_name,
@@ -356,7 +416,7 @@ def get_max_uid() -> int:
     
 max_uid_lock = mp.Lock()
 @app.post("/sign_up_user")
-async def sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBody:
+async def _endpoint_sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBody:
     try:
         conn = psycopg2.connect(POSTGRES_DB_URL)
     except:
@@ -386,32 +446,15 @@ async def sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBod
     return SignUpUserResponseBody(success=True)
 
 @app.post("/get_user_data")
-async def get_user_data(request : GetUserDataRequestBody) -> GetUserDataResponseBody:
-    try:
-        conn = psycopg2.connect(POSTGRES_DB_URL)
-    except:
-        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials")
-    
+async def _endpoint_get_user_data(request : GetUserDataRequestBody) -> GetUserDataResponseBody:
     email = request.email
+    
 
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT email, user_id, create_utc FROM user_credentials
-            WHERE email=%s;
-        """, (email, ))
-        result = cur.fetchone()
-    except:
-        raise HTTPException(status_code=500, detail="Failed to query database.")
-    print(result)
-    if result==None:
-        raise HTTPException(status_code=400, detail=f"User {email} does not exist.")
-
-    email,user_id,create_utc = result
+    email,user_id,create_utc = get_user_data(email)
     return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc)
 
 @app.post("/get_blip_head")
-async def get_blip_head(request : GetBLIPHeadRequestBody) -> GetBLIPHeadResponseBody:
+async def _endpoint_get_blip_head(request : GetBLIPHeadRequestBody) -> GetBLIPHeadResponseBody:
     try:
         conn = psycopg2.connect(POSTGRES_DB_URL)
     except:

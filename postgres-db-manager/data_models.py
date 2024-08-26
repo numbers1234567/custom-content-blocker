@@ -11,7 +11,7 @@ class GetRecentPostsResponseBody(BaseModel):
     html_embeds : List[HTMLEmbed]
 
 class CreateCurationModeRequestBody(BaseModel):
-    user_id : int
+    email : str
     curation_name : str
 
 class CreateCurationModeResponseBody(BaseModel):

@@ -12,7 +12,7 @@ from pydantic import BaseModel
 import os
 
 from pydantic import BaseModel
-from typing import List,Union,Tuple
+from typing import List,Union,Tuple,Iterable
 
 import json
 import requests
@@ -48,6 +48,75 @@ _POSTGRES_DB_HOST = os.environ["CONTENT_CURATION_POSTGRES_HOST"]
 _POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
 
 POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
+
+
+##########################
+#   BACKGROUND PROCESS   #
+##########################
+
+
+def create_formatted_str_array(arr : Iterable[any]) -> str:
+    return "{" + ",".join([str(i) for i in arr]) + "}"
+
+def create_blip_head(curate_id : int):
+    try: conn = psycopg2.connect(POSTGRES_DB_URL)
+    except: raise Exception("Failed to connect to DB")
+    # Initialize parameters
+    stdv1 = 1. / np.sqrt(768)
+    stdv2 = 1. / np.sqrt(10)
+
+    w1,b1 = np.random.rand(768, 10)*(2*stdv1) - stdv1, np.random.rand(10)*(2*stdv1) - stdv1
+    w2,b2 = np.random.rand(10, 2)*(2*stdv2) - stdv2, np.random.rand(2)*(2*stdv2) - stdv2
+
+    # Insert
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO blip_curation_heads (curation_id,weight1,weight2,bias1,bias2)
+            VALUES (%s, %s, %s, %s, %s);
+        """, (curate_id, 
+              create_formatted_str_array([create_formatted_str_array(row) for row in w1]), 
+              create_formatted_str_array([create_formatted_str_array(row) for row in w2]),
+              create_formatted_str_array(b1),
+              create_formatted_str_array(b2)))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"[ERROR]: Failed to insert BLIP head.")
+        print("   Message: " + str(e))
+        raise Exception("Failed to insert BLIP head")
+
+def _bg_populate_curate_modes():
+    last_iter = time.time()
+    while True:
+        try:
+            conn = psycopg2.connect(POSTGRES_DB_URL)
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT curation_modes.curation_id
+                FROM curation_modes LEFT JOIN blip_curation_heads ON curation_modes.curation_id=blip_curation_heads.curation_id
+                WHERE create_utc >= %s AND weight1 IS NULL;
+            """, (last_iter,))
+            query_res = cur.fetchone()
+            while query_res != None:
+                c_id, = query_res
+                try:
+                    create_blip_head(curate_id=c_id)
+                except Exception as e:
+                    print(f"[ERROR]: Failed to create BLIP head for curate id {c_id}")
+                    print("   Message: " + str(e))
+
+                query_res = cur.fetchone()
+
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print("[ERROR]: Unexpected exception")
+            print("   Message: " + str(e))
+        last_iter = time.time()
+        time.sleep(1)
+
+bg_worker_populate_mode = mp.Process(target=_bg_populate_curate_modes).start()
 
 
 #################
@@ -101,6 +170,29 @@ def get_blip_params(curate_key : str) -> Union[Tuple[LinearLayer, LinearLayer],N
     weight1 = np.transpose(weight1, (1,0))
     weight2 = np.transpose(weight2, (1,0))
     return ((weight1, bias1), (weight2, bias2))
+
+def update_blip_params(curate_key : str, params : BLIPParams):
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise Exception("Failed to connect to database.")
+    
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE blip_curation_heads
+        SET weight1=%s,weight2=%s,bias1=%s,bias2=%s
+        WHERE curation_id in (
+            SELECT curation_id FROM curation_modes WHERE curation_key=%s
+        );
+    """, (create_formatted_str_array([create_formatted_str_array(row) for row in params.weight1]), 
+        create_formatted_str_array([create_formatted_str_array(row) for row in params.weight2]),
+        create_formatted_str_array(params.bias1),
+        create_formatted_str_array(params.bias2),
+        curate_key)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
 
 @cache
 def get_post_blip_features(post_id : str) -> Union[np.array,None]:
@@ -160,7 +252,6 @@ politics_head = BLIPHead()
 politics_head.load_state_dict(torch.load("blip_deep_mlp_4_e5", map_location=torch.device("cpu")))
 politics_head.eval()
 
-@cache
 def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     if curate_key=="half":
         return random.random()
@@ -195,38 +286,3 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
 async def get_curate_score(post_id : str, curate_key : str) -> float:
     blip_score = get_blip_curate_score(post_id, curate_key)
     return blip_score if blip_score else 1
-
-if __name__=="__main__":
-    # Some unit tests here
-
-    # no_politics mode:
-    print("==TESTING no_politics MODE==")
-    # My opinion:
-    test_posts = [
-        "https://www.reddit.com/r/iamatotalpieceofshit/comments/1el50gq/guy_pushes_his_girlfriend_into_a_lake/",
-        "https://www.reddit.com/r/pics/comments/1el4jr7/jd_vance_beardless/",
-        "https://www.reddit.com/r/AnythingGoesNews/comments/1el4iqj/kamala_harris_hits_record_lead_over_trump_new/",
-        "https://www.reddit.com/r/Damnthatsinteresting/comments/1el3yv4/a_horse_protecting_his_owner_from_a_cow_whilst_he/",
-        "https://www.reddit.com/r/interestingasfuck/comments/1el3q1k/republican_mayor_of_mesa_arizona_my_city_would/",
-        "https://www.reddit.com/r/news/comments/1el3fdh/multiple_athletes_hospitalised_after_paris/",
-        "https://www.reddit.com/r/todayilearned/comments/1el3f1f/til_michael_phelps_has_won_a_record_23_olympic/",
-        "https://www.reddit.com/r/politics/comments/1el2pee/jd_vance_falsely_accuses_algerian_olympic_boxer/",
-        "https://www.reddit.com/r/FluentInFinance/comments/1el2nee/folks_like_this_are_why_finacial_literacy_is_so/",
-        "https://www.reddit.com/r/antiwork/comments/1el2mbl/this_is_the_biggest_bootlicking_post_ive_ever_seen/",
-    ]
-    angelo_expectation = [
-        False,
-        False,
-        True,
-        False,
-        True,
-        False,
-        False,
-        True,
-        False,
-        False,
-    ]
-    for test_post,expect in zip(test_posts, angelo_expectation):
-        print(f"{test_post} ({expect}) : {get_blip_curate_score(test_post, 'no_politics')}")
-        
-    print("==FINISH no_politics TEST==")

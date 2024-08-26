@@ -47,3 +47,13 @@ class BLIPParams(BaseModel):
 
 class GetBLIPHeadResponseBody(BaseModel):
     params : BLIPParams
+
+class CurateModeChangeData(BaseModel):
+    blip_params : BLIPParams|None
+
+class UpdateCurateModeRequestBody(BaseModel):
+    curate_key : str
+    change_data : CurateModeChangeData
+
+class UpdateCurateModeResponseBody(BaseModel):
+    pass

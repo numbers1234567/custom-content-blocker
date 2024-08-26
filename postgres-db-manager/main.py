@@ -491,3 +491,41 @@ async def _endpoint_get_blip_head(request : GetBLIPHeadRequestBody) -> GetBLIPHe
             bias2=bias2,
         ),
     )
+
+def update_blip_head(curate_key : str, params : BLIPParams):
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise Exception("Failed to connect to database.")
+    
+    cur = conn.cursor()
+    cur.execute("""
+        UPDATE blip_curation_heads
+        SET weight1=%s,weight2=%s,bias1=%s,bias2=%s
+        WHERE curation_id in (
+            SELECT curation_id FROM curation_modes WHERE curation_key=%s
+        );
+    """, (create_formatted_str_array([create_formatted_str_array(row) for row in params.weight1]), 
+        create_formatted_str_array([create_formatted_str_array(row) for row in params.weight2]),
+        create_formatted_str_array(params.bias1),
+        create_formatted_str_array(params.bias2),
+        curate_key)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+@app.post("/update_curate_mode")
+async def _endpoint_update_curate_mode(request : UpdateCurateModeRequestBody) -> UpdateCurateModeResponseBody:
+    # Unpack request
+    curate_key,change_data = request.curate_key,request.change_data
+    blip_params = change_data.blip_params
+
+    try:
+        if blip_params: update_blip_head(curate_key, blip_params)
+    except Exception as e:
+        print(f"[ERROR]: Failed to update curation head for {curate_key}")
+        print("   Message: " + str(e))
+    
+    return UpdateCurateModeResponseBody()

@@ -25,8 +25,7 @@ from data_models import *
 from env import *
 
 # Authentication
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
+from authenticator import Authenticator
 
 from sessions import SessionManager, Session, SessionUser
 
@@ -35,7 +34,7 @@ from sessions import SessionManager, Session, SessionUser
 #   SESSION HANDLING   #
 ########################
 
-session_manager = SessionManager({"public" : Session()})
+session_manager = SessionManager(default_sessions={"public" : Session()})
 
 
 #################
@@ -95,20 +94,10 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
     credentials = request.credentials
     token = credentials.token
 
-    #  Authenticate token
-    if token in session_manager:
-        raise HTTPException(status_code=401, detail="Already logged in with this token!")
-    
-    try:
-        #idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
-        idinfo = {"email" : "angelochem4@gmail.com", "sub" : ""}
+    if not session_manager.login(credentials):
+        print("[ERROR]: Failed to login with token " + token)
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
 
-        userid = idinfo['sub']
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    # Create new session w/ token and email
-    session_manager.register_session(token, SessionUser(idinfo["email"]))
 
     # Return success message
     return LoginResponseBody(success=True)

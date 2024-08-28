@@ -11,6 +11,8 @@ from data_models import *
 from env import *
 from rpc import *
 
+from authenticator import Authenticator
+
 class Session:
     def __init__(self, timeout : int=60*60):
         self.create_time = time.time()
@@ -62,9 +64,22 @@ class SessionUser(Session):
         return success
 
 class SessionManager:
-    def __init__(self, default_sessions:Dict[str, Session]={}):
+    def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
         # identifier : Session
         self.sessions : Dict[str, Session] = default_sessions.copy()
+        self.authenticator=authenticator
+
+    def login(self, credentials:Credentials):
+        token = credentials.token
+        if token in self:
+            return False
+        
+        try:
+            user_data = self.authenticator.authenticate(credentials)
+        except:
+            return False
+
+        self.register_session(token, SessionUser(user_data.email))
 
     def register_session(self, identifier : str, session : Session):
         self.sessions[identifier] = session

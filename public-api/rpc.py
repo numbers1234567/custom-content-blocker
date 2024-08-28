@@ -59,3 +59,10 @@ def sign_up_user_db_manager(email : str):
     })
 
     return (response.status_code >= 200 and response.status_code <= 299, response.status_code)
+
+def create_curation_mode(email : str, curation_name : str):
+    response = requests.post(f"{POST_DB_MANAGER}/create_curation_mode",
+        json={"email" : email, "curation_name" : curation_name}
+    )
+
+    return json.loads(response.content)

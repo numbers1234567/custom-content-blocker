@@ -43,8 +43,6 @@ class Session:
 
         return CuratedPostBatch(posts=curated_posts)
     
-    def create_curation_mode(self, mode_name : str, preset_key : str|None) -> CurationMode:
-        pass
     
 # An authenticated session
 class SessionUser(Session):
@@ -52,7 +50,7 @@ class SessionUser(Session):
         super().__init__(timeout)
         self.email = email
         user_data = get_user_data(email)
-        print(user_data)
+        
         if user_data==None:
             if not self.sign_up_user():
                 raise ValueError(f"Failed to create user {email}.")
@@ -60,6 +58,10 @@ class SessionUser(Session):
     def sign_up_user(self) -> bool:
         success, status = sign_up_user_db_manager(self.email)
         return success
+    
+    def create_curation_mode(self, mode_name : str, preset_key : str|None) -> CurationMode:
+        curate_data = create_curation_mode(self.email, mode_name)
+        return CurationMode(key=curate_data["curation_key"], name=curate_data["curation_name"])
 
 class SessionManager:
     def __init__(self, default_sessions:Dict[str, Session]={}):

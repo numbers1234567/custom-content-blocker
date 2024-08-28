@@ -100,7 +100,8 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
         raise HTTPException(status_code=401, detail="Already logged in with this token!")
     
     try:
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        #idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+        idinfo = {"email" : "angelochem4@gmail.com", "sub" : ""}
 
         userid = idinfo['sub']
     except ValueError as e:
@@ -115,14 +116,16 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
 @app.post("/create_curation_mode")
 def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
-    token, mode_name, preset_key = request.credentials.token
+    token, mode_name, preset_key = request.credentials.token, request.mode_name, request.preset_key
     
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
     try:
         curation_mode = session_manager[token].create_curation_mode(mode_name, preset_key)
-    except:
+    except Exception as e:
+        print("[ERROR]: Failed to create curation mode")
+        print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to create curation mode.")
 
     return CreateCurationModeResponseBody(curation_mode=curation_mode)

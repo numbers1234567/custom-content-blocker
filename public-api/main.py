@@ -21,14 +21,10 @@ from functools import cache
 
 import random
 
-from data_models import *
-from env import *
+from backend_shared.data_models_http import *
+from .env import *
 
-# Authentication
-from authenticator import Authenticator
-
-from sessions import SessionManager, Session, SessionUser
-
+from .sessions import SessionManager, Session, SessionUser
 
 ########################
 #   SESSION HANDLING   #
@@ -66,7 +62,7 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         request.options.before, request.options.count_max, request.options.count_min, \
         request.options.min_score, request.curation_settings.curation_mode.key
     
-    if token not in session_manager:
+    if token==None or token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
     if count_max > 50 or count_max <= 0:
@@ -78,7 +74,9 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
     
     try:
         curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, min_score=min_score)
-    except:
+    except Exception as e:
+        print("[ERROR]: Failed to retrieve curated posts.")
+        print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to retrieve curated posts")
 
     return CuratedPostsResponseBody(posts=curated_posts.posts)
@@ -105,13 +103,17 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
 @app.post("/create_curation_mode")
 def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
-    token, mode_name, preset_key = request.credentials.token, request.mode_name, request.preset_key
+    token, mode_name = request.credentials.token, request.mode_name
     
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
     try:
-        curation_mode = session_manager[token].create_curation_mode(mode_name, preset_key)
+        session = session_manager[token]
+        if not isinstance(session, SessionUser):
+            raise Exception("[ERROR]: Session is not an authenticated session")
+        curation_mode = session_manager[token].create_curation_mode(mode_name)
+        
     except Exception as e:
         print("[ERROR]: Failed to create curation mode")
         print("   Message: " + str(e))

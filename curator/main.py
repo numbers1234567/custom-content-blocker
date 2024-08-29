@@ -25,7 +25,7 @@ import time
 
 import random
 
-from data_models import *
+from backend_shared.data_models_http import *
 
 # Data Processing
 import numpy as np
@@ -249,7 +249,7 @@ class BLIPHead(nn.Module):
         return self.mlp(features)
 
 politics_head = BLIPHead()
-politics_head.load_state_dict(torch.load("blip_deep_mlp_4_e5", map_location=torch.device("cpu")))
+politics_head.load_state_dict(torch.load("models/blip_deep_mlp_4_e5", map_location=torch.device("cpu")))
 politics_head.eval()
 
 def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:

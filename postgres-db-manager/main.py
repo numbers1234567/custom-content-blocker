@@ -15,8 +15,8 @@ from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
-from SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
-from SocialAPIHandlers.RedditClient import RedditClient
+from .SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
+from .SocialAPIHandlers.RedditClient import RedditClient
 
 # third-party services
 from huggingface_hub import get_inference_endpoint
@@ -38,7 +38,7 @@ from collections.abc import Iterable
 
 import time
 
-from data_models import *
+from backend_shared.data_models_http import *
 import random
 
 import numpy as np
@@ -139,10 +139,10 @@ def get_user_data(email : str) -> Tuple[str,str,str]:
         """, (email, ))
         result = cur.fetchone()
     except:
-        raise Exception(status_code=500, detail="Failed to query database.")
+        raise Exception("Failed to query database.")
     
     if result==None:
-        raise Exception(status_code=400, detail=f"User {email} does not exist.")
+        raise Exception(f"User {email} does not exist.")
 
     email,user_id,create_utc = result
     return email,user_id,create_utc
@@ -324,7 +324,7 @@ whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM
 @app.post("/create_curation_mode")
 async def _endpoint_create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
-    email,curation_name = request.email,request.curation_name
+    email,curation_name = request.credentials.email,request.mode_name
     curation_key : str|None = None
     curation_id : str|None = None
 
@@ -361,9 +361,10 @@ async def _endpoint_create_curation_mode(request : CreateCurationModeRequestBody
         raise HTTPException(status_code=500, detail="")
     max_curate_id_lock.release()
     return CreateCurationModeResponseBody(
-        curation_key=curation_key,
-        curation_name=curation_name,
-        curation_id=curation_id,
+        curation_mode=CurationMode(
+            key=curation_key,
+            name=curation_name
+        )
     )
     
 def get_max_uid() -> int:

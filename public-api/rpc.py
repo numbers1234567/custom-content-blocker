@@ -5,17 +5,18 @@ import random
 import requests
 import json
 
-from env import *
+from backend_shared.data_models_http import *
+
+from .env import *
 
 from functools import cache
 
 @cache
-def get_recent_posts(before : int, count : int=20):
+def get_recent_posts(before : int, count : int=20) -> GetRecentPostsResponseBody:
     # Query post db
     response = requests.get(f"{POST_DB_MANAGER}/recent_posts?before={before}&count={count}")
-    html_embeds = json.loads(response.content)["html_embeds"]
     
-    return html_embeds
+    return GetRecentPostsResponseBody.model_validate(json.loads(response.content))
 
 def url_encode(arg : str):
     return arg.replace(":", "%3A").replace("/", "%2F")
@@ -41,7 +42,7 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
         # Clamp result
         return max(min(result, 1), 0)
     
-def get_user_data(email : str) -> Dict|None:
+def get_user_data(email : str) -> GetUserDataResponseBody|None:
     response = requests.post(f"{POST_DB_MANAGER}/get_user_data", json={
         "email" : email
     })
@@ -49,7 +50,7 @@ def get_user_data(email : str) -> Dict|None:
     if response.status_code < 200 or response.status_code > 299:
         return None
     
-    return response.content
+    return GetUserDataResponseBody.model_validate(json.loads(response.content))
     
 def sign_up_user_db_manager(email : str):
     response = requests.post(f"{POST_DB_MANAGER}/sign_up_user", json={
@@ -60,9 +61,9 @@ def sign_up_user_db_manager(email : str):
 
     return (response.status_code >= 200 and response.status_code <= 299, response.status_code)
 
-def create_curation_mode(email : str, curation_name : str):
+def create_curation_mode(email : str, curation_name : str) -> CreateCurationModeResponseBody:
     response = requests.post(f"{POST_DB_MANAGER}/create_curation_mode",
-        json={"email" : email, "curation_name" : curation_name}
+        json={"credentials" : {"email" : email}, "mode_name" : curation_name}
     )
 
-    return json.loads(response.content)
+    return CreateCurationModeResponseBody.model_validate(json.loads(response.content))

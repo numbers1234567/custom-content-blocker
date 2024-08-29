@@ -7,11 +7,10 @@ import json
 
 from functools import cache
 
-from data_models import *
-from env import *
-from rpc import *
+from .env import *
+from .rpc import *
 
-from authenticator import Authenticator
+from .authenticator import Authenticator
 
 class Session:
     def __init__(self, timeout : int=60*60):
@@ -25,10 +24,10 @@ class Session:
         social_posts = get_recent_posts(posts_before, count_max)
 
         # Score each post
-        for post in social_posts:
-            html_embed = post["html"]
-            create_utc = post["create_utc"]
-            post_id = post["post_id"]
+        for post in social_posts.html_embeds:
+            html_embed = post.html
+            create_utc = post.create_utc
+            post_id = post.post_id
 
             curation_scores = get_curate_score(post_id, curation_mode)
 
@@ -61,9 +60,10 @@ class SessionUser(Session):
         success, status = sign_up_user_db_manager(self.email)
         return success
     
-    def create_curation_mode(self, mode_name : str, preset_key : str|None) -> CurationMode:
+    def create_curation_mode(self, mode_name : str) -> CurationMode:
         curate_data = create_curation_mode(self.email, mode_name)
-        return CurationMode(key=curate_data["curation_key"], name=curate_data["curation_name"])
+
+        return curate_data.curation_mode
 
 class SessionManager:
     def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
@@ -78,10 +78,11 @@ class SessionManager:
         
         try:
             user_data = self.authenticator.authenticate(credentials)
-        except:
+        except Exception as e:
             return False
 
         self.register_session(token, SessionUser(user_data.email))
+        return True
 
     def register_session(self, identifier : str, session : Session):
         self.sessions[identifier] = session

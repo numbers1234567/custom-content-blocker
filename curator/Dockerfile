@@ -35,18 +35,23 @@ RUN adduser \
 # Leverage a bind mount to requirements.txt to avoid having to copy them into
 # into this layer.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    --mount=type=bind,source=build.sh,target=build.sh \
+    --mount=type=bind,source=curator/requirements.txt,target=requirements.txt \
+    --mount=type=bind,source=curator/build.sh,target=build.sh \
     ./build.sh
+
+# Copy the source code into the container.
+COPY curator curator
+COPY models models
+RUN touch __init__.py
+COPY backend_shared backend_shared
+
 
 # Switch to the non-privileged user to run the application.
 USER appuser
 
-# Copy the source code into the container.
-COPY . .
 
 # Expose the port that the application listens on.
 EXPOSE 8002
 
 # Run the application.
-CMD uvicorn 'main:app' --host=0.0.0.0 --port=8002
+CMD uvicorn 'curator.main:app' --host=0.0.0.0 --port=8002

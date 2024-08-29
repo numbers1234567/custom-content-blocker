@@ -30,6 +30,7 @@ from backend_shared.data_models_http import *
 # Data Processing
 import numpy as np
 from torch import nn
+from torch.nn import CrossEntropyLoss
 import torch
 
 # Database
@@ -252,6 +253,23 @@ politics_head = BLIPHead()
 politics_head.load_state_dict(torch.load("models/blip_deep_mlp_4_e5", map_location=torch.device("cpu")))
 politics_head.eval()
 
+def load_blip_head(curate_key : str) -> BLIPHead|None:
+    params = get_blip_params(curate_key)
+    if params is None:
+        print(f"[ERROR]: Could not find parameters for curate_key {curate_key}!")
+        return None
+    
+    l1, l2 = params
+    head = BLIPHead()
+    head.mlp[0].weight = nn.Parameter(torch.Tensor(l1[0]).type(torch.float32))
+    head.mlp[0].bias = nn.Parameter(torch.Tensor(l1[1]).type(torch.float32))
+    head.mlp[3].weight = nn.Parameter(torch.Tensor(l2[0]).type(torch.float32))
+    head.mlp[3].bias = nn.Parameter(torch.Tensor(l2[1]).type(torch.float32))
+
+    head.eval()
+
+    return head
+
 def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     if curate_key=="half":
         return random.random()
@@ -264,19 +282,10 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
         print(f"[LOG]: No BLIP features for {post_id}")
         return None
     
-    params = get_blip_params(curate_key)
-    if params is None:
-        print(f"[ERROR]: Could not find parameters for curate_key {curate_key}!")
+    head = load_blip_head(curate_key=curate_key)
+    if not head:
+        print(f"[LOG]: No BLIP head for {curate_key}")
         return None
-    
-    l1, l2 = params
-    head = BLIPHead()
-    head.mlp[0].weight = nn.Parameter(torch.Tensor(l1[0]))
-    head.mlp[0].bias = nn.Parameter(torch.Tensor(l1[1]))
-    head.mlp[3].weight = nn.Parameter(torch.Tensor(l2[0]))
-    head.mlp[3].bias = nn.Parameter(torch.Tensor(l2[1]))
-
-    head.eval()
     
     with torch.no_grad():
         features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
@@ -288,3 +297,47 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
 async def get_curate_score(post_id : str, curate_key : str) -> float:
     blip_score = get_blip_curate_score(post_id, curate_key)
     return blip_score if blip_score else 1
+
+def update_blip_head(curate_key : str, post_id : str, positive : bool):
+    head = load_blip_head(curate_key)
+    if head is None:
+        return
+    head.train()
+    features = get_post_blip_features(post_id)
+    if features is None:
+        return
+    
+    # Train
+    optimizer = torch.optim.Adam(head.parameters())
+    features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
+    label = [[1,0]] if positive else [[0,1]]
+    label = torch.tensor(label).type(torch.float32)
+    loss = CrossEntropyLoss()
+    l = torch.mean(loss(head(features), label))
+    l.backward()
+    optimizer.step()
+
+    # Store new parameters
+    w1 = head.mlp[0].weight.cpu().detach().numpy()
+    w2 = head.mlp[3].weight.cpu().detach().numpy()
+    b1 = head.mlp[0].bias.cpu().detach().numpy()
+    b2 = head.mlp[3].bias.cpu().detach().numpy()
+    w1 = np.transpose(w1, (1,0))
+    w2 = np.transpose(w2, (1,0))
+    new_params = BLIPParams(
+        weight1=[list(i) for i in w1],
+        weight2=[list(i) for i in w2],
+        bias1=list(b1),
+        bias2=list(b2),
+    )
+
+    update_blip_params(curate_key, new_params)
+    
+
+@app.post("/recommend_post")
+async def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
+    curate_key, post_id, positive = request.curate_key, request.post_id, request.options.positive
+    
+    update_blip_head(curate_key, post_id, positive)
+
+    return RecommendPostResponseBody()

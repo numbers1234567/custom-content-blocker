@@ -88,6 +88,18 @@ class CuratedPostsResponseBody(CuratedPostBatch):
 class GetCurateScoreResponseBody(BaseModel):
     curate_score : float
 
+class RecommendData(BaseModel):
+    positive : bool
+
+class RecommendPostRequestBody(BaseModel):
+    credentials : Credentials|None=None
+    curate_key : str
+    post_id : str
+    options : RecommendData
+
+class RecommendPostResponseBody(BaseModel):
+    pass
+
 class CreateCurationModeRequestBody(BaseModel):
     credentials : Credentials
     mode_name : str

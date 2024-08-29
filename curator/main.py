@@ -275,6 +275,8 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     head.mlp[0].bias = nn.Parameter(torch.Tensor(l1[1]))
     head.mlp[3].weight = nn.Parameter(torch.Tensor(l2[0]))
     head.mlp[3].bias = nn.Parameter(torch.Tensor(l2[1]))
+
+    head.eval()
     
     with torch.no_grad():
         features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)

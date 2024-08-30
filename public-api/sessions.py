@@ -71,7 +71,12 @@ class SessionUser(Session):
         pass
 
     def recommend_post(self, curate_key : str, post_id : str, positive : str):
+        if curate_key not in [i.key for i in self.curate_modes]:
+            return False
+        
         recommend_post(post_id, curate_key, positive)
+
+        return True
 
 class SessionManager:
     def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):

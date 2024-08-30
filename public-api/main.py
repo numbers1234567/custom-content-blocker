@@ -128,16 +128,20 @@ def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseB
     
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
-    
+    result = True
     try:
         session = session_manager[token]
         if not isinstance(session, SessionUser):
             raise Exception("[ERROR]: Session is not an authenticated session")
-        session.recommend_post(curate_key,post_id,positive)
+        
+        result = session.recommend_post(curate_key,post_id,positive)
         
     except Exception as e:
         print("[ERROR]: Failed to recommend post")
         print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to recommend post.")
+
+    if not result:
+        raise HTTPException(status_code=401, detail="User is not allowed to modify this curation mode.")
 
     return RecommendPostResponseBody()

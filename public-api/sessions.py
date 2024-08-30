@@ -67,8 +67,8 @@ class SessionUser(Session):
 
         return curate_data.curation_mode
     
-    def get_curate_modes(self) -> List[CurationMode]:
-        pass
+    def get_usable_curate_modes(self) -> List[CurationMode]:
+        return ["public", "all"] + [i.key for i in self.curate_modes]
 
     def recommend_post(self, curate_key : str, post_id : str, positive : str):
         if curate_key not in [i.key for i in self.curate_modes]:

@@ -51,6 +51,8 @@ class SessionUser(Session):
         super().__init__(timeout)
         self.email = email
         user_data = get_user_data(email)
+        self.signup_time = user_data.create_utc
+        self.curate_modes = user_data.curate_modes
         
         if user_data==None:
             if not self.sign_up_user():
@@ -64,6 +66,12 @@ class SessionUser(Session):
         curate_data = create_curation_mode(self.email, mode_name)
 
         return curate_data.curation_mode
+    
+    def get_curate_modes(self) -> List[CurationMode]:
+        pass
+
+    def recommend_post(self, curate_key : str, post_id : str, positive : str):
+        recommend_post(post_id, curate_key, positive)
 
 class SessionManager:
     def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):

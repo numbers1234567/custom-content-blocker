@@ -120,3 +120,24 @@ def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurat
         raise HTTPException(status_code=500, detail="Failed to create curation mode.")
 
     return CreateCurationModeResponseBody(curation_mode=curation_mode)
+
+@app.post("/recommend_post")
+def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
+    # Unpack request
+    token,curate_key,post_id,positive = request.credentials.token,request.curate_key,request.post_id,request.options.positive
+    
+    if token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    try:
+        session = session_manager[token]
+        if not isinstance(session, SessionUser):
+            raise Exception("[ERROR]: Session is not an authenticated session")
+        session.recommend_post(curate_key,post_id,positive)
+        
+    except Exception as e:
+        print("[ERROR]: Failed to recommend post")
+        print("   Message: " + str(e))
+        raise HTTPException(status_code=500, detail="Failed to recommend post.")
+
+    return RecommendPostResponseBody()

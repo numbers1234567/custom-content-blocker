@@ -126,7 +126,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def get_user_data(email : str) -> Tuple[str,str,str]:
+def get_user_data(email : str) -> Tuple[str,str,str,List[CurationMode]]:
     try:
         conn = psycopg2.connect(POSTGRES_DB_URL)
     except:
@@ -137,15 +137,28 @@ def get_user_data(email : str) -> Tuple[str,str,str]:
             SELECT email, user_id, create_utc FROM user_credentials
             WHERE email=%s;
         """, (email, ))
-        result = cur.fetchone()
+        main_data = cur.fetchone()
     except:
         raise Exception("Failed to query database.")
     
-    if result==None:
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT curation_key,curation_name FROM curation_modes 
+            WHERE primary_user IN (
+                SELECT user_id FROM user_credentials WHERE email=%s
+            );
+        """, (email, ))
+        curation_keys = cur.fetchall()
+        curation_modes = [CurationMode(key=key, name=name) for key,name in curation_keys]
+    except Exception as e:
+        raise Exception(f"Failed to retrieve curation modes for {email}")
+    
+    if main_data==None:
         raise Exception(f"User {email} does not exist.")
 
-    email,user_id,create_utc = result
-    return email,user_id,create_utc
+    email,user_id,create_utc = main_data
+    return email,user_id,create_utc,curation_modes
 
 def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
     cur: psycopg2.cursor = conn.cursor()
@@ -328,7 +341,7 @@ async def _endpoint_create_curation_mode(request : CreateCurationModeRequestBody
     curation_key : str|None = None
     curation_id : str|None = None
 
-    email,user_id,_ = get_user_data(email)
+    email,user_id,_,_ = get_user_data(email)
 
     create_utc = time.time()
     max_curate_id_lock.acquire()
@@ -425,5 +438,5 @@ async def _endpoint_get_user_data(request : GetUserDataRequestBody) -> GetUserDa
     email = request.email
     
 
-    email,user_id,create_utc = get_user_data(email)
-    return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc)
+    email,user_id,create_utc,curate_modes = get_user_data(email)
+    return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc,curate_modes=curate_modes)

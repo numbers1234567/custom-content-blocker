@@ -67,3 +67,10 @@ def create_curation_mode(email : str, curation_name : str) -> CreateCurationMode
     )
 
     return CreateCurationModeResponseBody.model_validate(json.loads(response.content))
+
+def recommend_post(post_id : str, curate_key : str, positive : bool) -> RecommendPostResponseBody:
+    response = requests.post(f"{POST_DB_MANAGER}/create_curation_mode",
+        json={"curate_key" : curate_key, "post_id" : post_id, "options" : {"positive" : positive}}
+    )
+
+    return RecommendPostResponseBody.model_validate(json.loads(response.content))

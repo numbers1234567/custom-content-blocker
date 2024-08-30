@@ -45,7 +45,7 @@ export default function Home() {
   }, [credentials]);
 
   return (
-    <main className="">
+    <main className="bg-white">
       <div className="fixed left-0 top-0">
         <Sidebar credentials={credentials} setCredentials={setCredentials} curationSettings={curationSettings} setCurationSettings={setCurationSettings}/>
       </div>

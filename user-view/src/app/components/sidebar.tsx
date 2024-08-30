@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getFilters, getSocialAppFilters, getUserCurationModes } from "../api_call";
 import { Credentials } from "../credentials";
 import { cloneCurationSetting, CurationMode, CurationSetting } from "../curation_settings";
@@ -18,6 +18,7 @@ export function Sidebar({
   const [availableCurationModes, setAvailableCurationModes] = useState<CurationMode[]>([]);
   const [availableFilters, setAvailableFilters] = useState<CurationMode[]>([]);
   const [availableSocialSites, setAvailableSocialSites] = useState<CurationMode[]>([]);
+  const [shown, setShown] = useState<boolean>(true);
   useEffect(()=>{
     getUserCurationModes(credentials).then((curationModes)=>setAvailableCurationModes(curationModes));
     getSocialAppFilters().then((socialSites)=>setAvailableSocialSites(socialSites));
@@ -45,25 +46,46 @@ export function Sidebar({
     setCurationSettings(newSettings);
   }
 
-  return <div className="h-screen bg-white w-64 p-4">
-    {!credentials.isSet && <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>}
-    <p>Curation Modes</p>
-    {availableCurationModes.map((val)=>{
-      // CURATION MODES
-      const isSelected = val.key==curationSettings.curationMode.key;
-      return <div className="w-full h-6" key={val.key}>
-        {isSelected  && <input type="radio" name="curation-mode" className="inline-block m-2" checked 
-          onChange={(e)=>switchCurationMode(val)}/>}
-        {!isSelected && <input type="radio" name="curation-mode" className="inline-block m-2" 
-          onChange={(e)=>switchCurationMode(val)}/>}
+  const ref = useRef<HTMLDivElement>(null);
 
-        <p className="inline-block m-2">{val.name}</p>
-      </div>
-    })}
+  function hide() {
+    if (!ref.current) return;
+    ref.current.style.left = "-255px";
+  }
+  function show() {
+    if (!ref.current) return;
+    ref.current.style.left = "0px";
+  }
+
+  return <div className="h-screen bg-white w-64 p-4 text-black border-r-2 absolute transition-all" ref={ref}>
+    <div>
+      {!credentials.isSet && <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>}
+      <p>Curation Modes</p>
+      {availableCurationModes.map((val)=>{
+        // CURATION MODES
+        const isSelected = val.key==curationSettings.curationMode.key;
+        return <div className="w-full h-6" key={val.key}>
+          {isSelected  && <input type="radio" name="curation-mode" className="inline-block m-2" checked 
+            onChange={(e)=>switchCurationMode(val)}/>}
+          {!isSelected && <input type="radio" name="curation-mode" className="inline-block m-2" 
+            onChange={(e)=>switchCurationMode(val)}/>}
+
+          <p className="inline-block m-2">{val.name}</p>
+        </div>
+      })}
+    </div>
+    <button onClick={()=>{shown ? hide():show(); setShown(!shown);}}>
+      <div className="w-8 h-8 absolute top-2" style={{left : "260px"}}>
+        <svg viewBox="0 0 110 110">
+          <circle cx="53" cy="53" r="50" stroke="gray" stroke-width="3" fill="rgba(0,0,0, 0.1)"/>
+          <text x="12" y="68" fill="gray" fontSize="60">{shown ? "<<" : ">>"}</text>
+        </svg>
+      </div> 
+    </button>
     {/*<div className="w-full h-6">
       <p className="inline-block m-2">+</p>
       <p className="inline-block m-2">Create New</p>
-    </div>*/}
+    </div>
     <p className="mt-8">Whitelisted Sites</p>
     {/*availableSocialSites.map((val)=>{
       // WHITELIST SITES
@@ -78,7 +100,7 @@ export function Sidebar({
           onChange={(e)=>whitelistSite(val)}/>}
         <p className="inline-block m-2">{val.name}</p>
       </div>
-    })*/}
+    })
     <p className="mt-8">Blacklisted Topics</p>
     {/*availableFilters.map((val)=>{
       // BLACKLIST TRENDING TOPICS

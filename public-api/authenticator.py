@@ -18,7 +18,7 @@ class Authenticator:
     def authenticate(self, credentials : Credentials) -> UserData:
         token = credentials.token
         if GOOGLE_CLIENT_ID=="staging":
-            return UserData(email=token[:25])
+            return UserData(email=token[:50])
         try:
             idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
 

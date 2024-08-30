@@ -47,14 +47,16 @@ class SignUpUserResponseBody(BaseModel):
 class GetUserDataRequestBody(BaseModel):
     email : str
 
+class CurationMode(BaseModel):
+    key : str
+    name : str
+    
 class GetUserDataResponseBody(BaseModel):
     email : str
     uid : int
     create_utc : int
+    curate_modes : List[CurationMode]
 
-class CurationMode(BaseModel):
-    key : str
-    name : str
 
 class CurationSetting(BaseModel):
     curation_mode : CurationMode

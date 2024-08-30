@@ -35,18 +35,22 @@ RUN adduser \
 # Leverage a bind mount to requirements.txt to avoid having to copy them into
 # into this layer.
 RUN --mount=type=cache,target=/root/.cache/pip \
-    --mount=type=bind,source=requirements.txt,target=requirements.txt \
-    --mount=type=bind,source=build.sh,target=build.sh \
+    --mount=type=bind,source=postgres-db-manager/requirements.txt,target=requirements.txt \
+    --mount=type=bind,source=postgres-db-manager/build.sh,target=build.sh \
     ./build.sh
+
+# Copy the source code into the container.
+COPY postgres-db-manager postgres-db-manager
+RUN touch __init__.py
+COPY backend_shared backend_shared
+
 
 # Switch to the non-privileged user to run the application.
 USER appuser
 
-# Copy the source code into the container.
-COPY . .
 
 # Expose the port that the application listens on.
 EXPOSE 8000
 
 # Run the application.
-CMD uvicorn 'main:app' --host=0.0.0.0 --port=8000
+CMD uvicorn 'postgres-db-manager.main:app' --host=0.0.0.0 --port=8000

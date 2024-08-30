@@ -11,12 +11,12 @@ Definition for a service which can be
 ###############
 
 # API
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
-from SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
-from SocialAPIHandlers.RedditClient import RedditClient
+from .SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
+from .SocialAPIHandlers.RedditClient import RedditClient
 
 # third-party services
 from huggingface_hub import get_inference_endpoint
@@ -33,9 +33,15 @@ import requests
 
 import multiprocessing as mp
 
-from typing import Union
+from typing import Union,Dict,Tuple
+from collections.abc import Iterable
 
 import time
+
+from backend_shared.data_models_http import *
+import random
+
+import numpy as np
 
 
 #################
@@ -52,25 +58,38 @@ _POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
 POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
 
 # Social Media APIs
-_REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
-_REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
-_REDDIT_API_PASSWORD      = os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
-_REDDIT_API_USER_AGENT    = os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
-_REDDIT_API_USERNAME      = os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+reddit_api_access = True
+try:
+    _REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
+    _REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
+    _REDDIT_API_PASSWORD      = os.environ["CONTENT_CURATION_REDDIT_API_PASSWORD"]
+    _REDDIT_API_USER_AGENT    = os.environ["CONTENT_CURATION_REDDIT_API_USER_AGENT"]
+    _REDDIT_API_USERNAME      = os.environ["CONTENT_CURATION_REDDIT_API_USERNAME"]
+except:
+    print("[LOG]: No access to Reddit API. Continuing without.")
+    reddit_api_access = False
 
 # HuggingFace inference endpoints
-_HUGGINGFACE_ENDPOINT_URL  = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_URL"]
-_HUGGINGFACE_ENDPOINT_NAME = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_NAME"]
-_HUGGINGFACE_ACCESS_TOKEN  = os.environ["CONTENT_CURATION_HUGGINGFACE_ACCESS_TOKEN"]
+huggingface_access = True
+try:
+    _HUGGINGFACE_ENDPOINT_URL  = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_URL"]
+    _HUGGINGFACE_ENDPOINT_NAME = os.environ["CONTENT_CURATION_HUGGINGFACE_ENDPOINT_NAME"]
+    _HUGGINGFACE_ACCESS_TOKEN  = os.environ["CONTENT_CURATION_HUGGINGFACE_ACCESS_TOKEN"]
+except:
+    print("[LOG]: No access to HuggingFace endpoint. Continuing without.")
+    huggingface_access = False
 
 
 ############################
 #   THIRD PARTY SERVICES   #
 ############################
 
-huggingface_blip_endpoint = get_inference_endpoint(name=_HUGGINGFACE_ENDPOINT_NAME, token=_HUGGINGFACE_ACCESS_TOKEN)
+huggingface_blip_endpoint = None
+if huggingface_access:
+    huggingface_blip_endpoint = get_inference_endpoint(name=_HUGGINGFACE_ENDPOINT_NAME, token=_HUGGINGFACE_ACCESS_TOKEN)
 
 def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=None):
+    if not huggingface_blip_endpoint: return None
     body = {
         "inputs" : {
             "text" : text, 
@@ -84,9 +103,8 @@ def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=N
     return feature_vector
 
 
-SOCIAL_CLIENTS = [
-    RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT),
-]
+SOCIAL_CLIENTS = []
+if reddit_api_access: SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
 
 
 #################
@@ -107,6 +125,27 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def get_user_data(email : str) -> Tuple[str,str,str]:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise Exception(status_code=500, detail="Failed to connect to database. Check credentials")
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT email, user_id, create_utc FROM user_credentials
+            WHERE email=%s;
+        """, (email, ))
+        result = cur.fetchone()
+    except:
+        raise Exception("Failed to query database.")
+    
+    if result==None:
+        raise Exception(f"User {email} does not exist.")
+
+    email,user_id,create_utc = result
+    return email,user_id,create_utc
 
 def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
     cur: psycopg2.cursor = conn.cursor()
@@ -199,8 +238,9 @@ Add posts to the database from social
 Expected to run every hour.
 """
 @app.post("/update_post_db")
-async def update_post_db(count : int=2000): 
-
+async def update_post_db(): 
+    if not huggingface_blip_endpoint:
+        raise HTTPException(status_code=400, detail="Server does not have access to HuggingFace endpoint.")
     # Add posts to the database
     # Get maximum internal id (One concern is, if two calls to update_post_db() are made,
     #  they might both get the same maximum internal id, and there will be a conflict
@@ -241,9 +281,7 @@ async def update_post_db(count : int=2000):
     return {}
 
 @app.get("/recent_posts")
-# just need to confirm I can retrieve posts from the database, then I can add some fancy curation features.
-async def get_recent_posts(before : int, count : int=20):
-    if count > 100: count = 100
+async def get_recent_posts(before : int, count : int=20) -> GetRecentPostsResponseBody:
     with psycopg2.connect(POSTGRES_DB_URL) as conn:
         cur = conn.cursor()
         # New to SQL, so there might be a more performant way to do this.
@@ -256,4 +294,136 @@ async def get_recent_posts(before : int, count : int=20):
             LIMIT %s;
         """, (before, count))
         embeds = cur.fetchall()
-    return {"html_embeds" : [{"html" : embed, "create_utc" : create_utc, "post_id" : post_id}  for (embed,create_utc,post_id) in embeds]}
+    return GetRecentPostsResponseBody(
+        html_embeds=[HTMLEmbed(html=html,create_utc=create_utc,post_id=post_id) for (html, create_utc, post_id) in embeds]
+    )
+
+def get_max_curate_id():
+    conn = psycopg2.connect(POSTGRES_DB_URL)
+    cur: psycopg2.cursor = conn.cursor()
+
+    cur.execute("""
+        SELECT MAX(curation_id)
+        FROM curation_modes;
+    """)
+
+    result = cur.fetchone()
+
+    max_id = result[0] if result[0]!=None else -1
+    
+    cur.close()
+    conn.close()
+
+    return max_id
+
+def create_formatted_str_array(arr : Iterable[any]) -> str:
+    return "{" + ",".join([str(i) for i in arr]) + "}"
+
+max_curate_id_lock = mp.Lock()
+whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
+@app.post("/create_curation_mode")
+async def _endpoint_create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+    # Unpack request
+    email,curation_name = request.credentials.email,request.mode_name
+    curation_key : str|None = None
+    curation_id : str|None = None
+
+    email,user_id,_ = get_user_data(email)
+
+    create_utc = time.time()
+    max_curate_id_lock.acquire()
+    # DB should reject non-unique keys, so keep trying
+    curation_key = ""
+    tries = 0
+    MAX_TRIES = 4
+    while tries < MAX_TRIES:  # Either a statistical anomaly (curation key exists) or an unknown exception
+        try:
+            with psycopg2.connect(POSTGRES_DB_URL) as conn:
+                curation_key = "".join([random.choice(whitelist_key_characters) for _ in range(40)])
+                curation_id = get_max_curate_id()+1
+                cur = conn.cursor()
+                cur.execute("""
+                    INSERT INTO curation_modes (primary_user, curation_id, curation_name, curation_key, create_utc) 
+                    VALUES (%s, %s, %s, %s, %s);
+                """, (user_id, curation_id, curation_name, curation_key, create_utc))
+                conn.commit()
+                cur.close()
+            break
+                
+        except Exception as e:
+            print(f"[ERROR]: Attempt {tries+1} to insert {curation_name} for {user_id} failed!")
+            print("   Message: " + str(e))
+            pass
+        tries += 1
+    if tries >= MAX_TRIES:
+        print(f"[ERROR]: Failed to insert curation mode with user {user_id} and name {curation_name}.")
+        max_curate_id_lock.release()
+        raise HTTPException(status_code=500, detail="")
+    max_curate_id_lock.release()
+    return CreateCurationModeResponseBody(
+        curation_mode=CurationMode(
+            key=curation_key,
+            name=curation_name
+        )
+    )
+    
+def get_max_uid() -> int:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials.")
+    
+    cur = conn.cursor()
+    
+    cur.execute("""
+        SELECT MAX(user_id)
+        FROM user_credentials;
+    """)
+
+    result = cur.fetchone()
+
+    max_id = result[0] if result[0]!=None else -1
+    
+    cur.close()
+    conn.close()
+
+    return max_id
+    
+max_uid_lock = mp.Lock()
+@app.post("/sign_up_user")
+async def _endpoint_sign_up_user(request : SignUpUserRequestBody) -> SignUpUserResponseBody:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials.")\
+    # Unpack request
+    email = request.credentials.email
+    
+    cur = conn.cursor()
+    with max_uid_lock:
+        next_uid = get_max_uid() + 1
+        create_utc = time.time()
+        try:  # Insert user
+            cur.execute("""
+                INSERT INTO user_credentials (user_id, create_utc, email)
+                VALUES (%s, %s, %s);
+            """, (next_uid, create_utc, email))
+            conn.commit()
+
+            conn.close()
+            cur.close()
+
+        except Exception as e:
+            print(f"[ERROR]: Failed to create user {email}.")
+            print("   Message: " + str(e))
+            raise HTTPException(status_code=500, detail=f"Failed to create user {email}.")
+    
+    return SignUpUserResponseBody(success=True)
+
+@app.post("/get_user_data")
+async def _endpoint_get_user_data(request : GetUserDataRequestBody) -> GetUserDataResponseBody:
+    email = request.email
+    
+
+    email,user_id,create_utc = get_user_data(email)
+    return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc)

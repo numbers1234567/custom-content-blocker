@@ -3,7 +3,7 @@
 ###############
 
 # API
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from pydantic import BaseModel
@@ -21,21 +21,16 @@ from functools import cache
 
 import random
 
-from data_models import *
-from env import *
+from backend_shared.data_models_http import *
+from .env import *
 
-# Authentication
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
-
-from sessions import SessionManager, Session, SessionUser
-
+from .sessions import SessionManager, Session, SessionUser
 
 ########################
 #   SESSION HANDLING   #
 ########################
 
-session_manager = SessionManager({"public" : Session()})
+session_manager = SessionManager(default_sessions={"public" : Session()})
 
 
 #################
@@ -67,7 +62,22 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         request.options.before, request.options.count_max, request.options.count_min, \
         request.options.min_score, request.curation_settings.curation_mode.key
     
-    curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, min_score=min_score)
+    if token==None or token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    if count_max > 50 or count_max <= 0:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: 0 < count_max <= 50")
+    if count_min > 50 or count_min <= 0:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: 0 < count_min <= 50")
+    if count_min > count_max:
+        raise HTTPException(status_code=400, detail="Invalid range. Constraint: count_min <= count_max")
+    
+    try:
+        curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, min_score=min_score)
+    except Exception as e:
+        print("[ERROR]: Failed to retrieve curated posts.")
+        print("   Message: " + str(e))
+        raise HTTPException(status_code=500, detail="Failed to retrieve curated posts")
 
     return CuratedPostsResponseBody(posts=curated_posts.posts)
 
@@ -82,23 +92,31 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
     credentials = request.credentials
     token = credentials.token
 
-    #  Authenticate token
-    try:
-        idinfo = id_token.verify_oauth2_token(token, google_requests.Request(), GOOGLE_CLIENT_ID)
+    if not session_manager.login(credentials):
+        print("[ERROR]: Failed to login with token " + token)
+        raise HTTPException(status_code=401, detail="Invalid credentials.")
 
-        userid = idinfo['sub']
-    except ValueError as e:
-        print("[ERROR]: Failed to log in a user.")
-        print("   Message: " + str(e))
-        return LoginResponseBody(success=False)
-
-    # Create new session w/ token and email
-    session_manager.register_session(token, SessionUser(idinfo["email"]))
-    print(session_manager)
 
     # Return success message
     return LoginResponseBody(success=True)
 
 @app.post("/create_curation_mode")
 def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
-    pass
+    # Unpack request
+    token, mode_name = request.credentials.token, request.mode_name
+    
+    if token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    try:
+        session = session_manager[token]
+        if not isinstance(session, SessionUser):
+            raise Exception("[ERROR]: Session is not an authenticated session")
+        curation_mode = session_manager[token].create_curation_mode(mode_name)
+        
+    except Exception as e:
+        print("[ERROR]: Failed to create curation mode")
+        print("   Message: " + str(e))
+        raise HTTPException(status_code=500, detail="Failed to create curation mode.")
+
+    return CreateCurationModeResponseBody(curation_mode=curation_mode)

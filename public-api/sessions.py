@@ -7,9 +7,10 @@ import json
 
 from functools import cache
 
-from data_models import *
-from env import *
-from rpc import *
+from .env import *
+from .rpc import *
+
+from .authenticator import Authenticator
 
 class Session:
     def __init__(self, timeout : int=60*60):
@@ -23,10 +24,10 @@ class Session:
         social_posts = get_recent_posts(posts_before, count_max)
 
         # Score each post
-        for post in social_posts:
-            html_embed = post["html"]
-            create_utc = post["create_utc"]
-            post_id = post["post_id"]
+        for post in social_posts.html_embeds:
+            html_embed = post.html
+            create_utc = post.create_utc
+            post_id = post.post_id
 
             curation_scores = get_curate_score(post_id, curation_mode)
 
@@ -43,16 +44,45 @@ class Session:
 
         return CuratedPostBatch(posts=curated_posts)
     
+    
+# An authenticated session
 class SessionUser(Session):
     def __init__(self, email : str, timeout : int=60*60):
         super().__init__(timeout)
         self.email = email
+        user_data = get_user_data(email)
+        
+        if user_data==None:
+            if not self.sign_up_user():
+                raise ValueError(f"Failed to create user {email}.")
 
+    def sign_up_user(self) -> bool:
+        success, status = sign_up_user_db_manager(self.email)
+        return success
+    
+    def create_curation_mode(self, mode_name : str) -> CurationMode:
+        curate_data = create_curation_mode(self.email, mode_name)
+
+        return curate_data.curation_mode
 
 class SessionManager:
-    def __init__(self, default_sessions:Dict[str, Session]={}):
+    def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
         # identifier : Session
         self.sessions : Dict[str, Session] = default_sessions.copy()
+        self.authenticator=authenticator
+
+    def login(self, credentials:Credentials):
+        token = credentials.token
+        if token in self:
+            return False
+        
+        try:
+            user_data = self.authenticator.authenticate(credentials)
+        except Exception as e:
+            return False
+
+        self.register_session(token, SessionUser(user_data.email))
+        return True
 
     def register_session(self, identifier : str, session : Session):
         self.sessions[identifier] = session

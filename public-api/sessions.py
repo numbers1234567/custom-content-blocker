@@ -73,6 +73,8 @@ class SessionUser(Session):
             return None
         curate_data = create_curation_mode(self.email, mode_name)
 
+        self._refresh()
+
         return curate_data.curation_mode
     
     def get_usable_curate_modes(self) -> List[CurationMode]:
@@ -85,6 +87,13 @@ class SessionUser(Session):
         recommend_post(post_id, curate_key, positive)
 
         return True
+    
+    def _refresh(self):
+        user_data = get_user_data(self.email)
+        self.signup_time = user_data.create_utc
+        self.curate_modes = user_data.curate_modes
+
+        self.curate_mode_limit = 10  # Current default
 
 class SessionManager:
     def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):

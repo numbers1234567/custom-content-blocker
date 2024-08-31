@@ -44,6 +44,9 @@ class Session:
 
         return CuratedPostBatch(posts=curated_posts)
     
+    def get_usable_curate_modes(self) -> List[CurationMode]:
+        return [CurationMode(key="all", name="All"), CurationMode(key="no_politics", name="No Politics")]
+    
     
 # An authenticated session
 class SessionUser(Session):
@@ -72,7 +75,7 @@ class SessionUser(Session):
         return curate_data.curation_mode
     
     def get_usable_curate_modes(self) -> List[CurationMode]:
-        return [CurationMode(key="all", name="All"), CurationMode(key="no_politics", name="No Politics")] + self.curate_modes
+        return super().get_usable_curate_modes() + self.curate_modes
 
     def recommend_post(self, curate_key : str, post_id : str, positive : str):
         if curate_key not in [i.key for i in self.curate_modes]:

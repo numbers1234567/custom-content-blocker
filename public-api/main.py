@@ -158,8 +158,6 @@ async def get_curation_modes(request : GetCurationModesRequestBody) -> GetCurati
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
     session = session_manager[token]
-    if not isinstance(session, SessionUser):
-        raise HTTPException(status_code=401, detail="[ERROR]: Session is not an authenticated session")
     
     try:
         result = session.get_usable_curate_modes()

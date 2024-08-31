@@ -70,6 +70,10 @@ type LoginResponseBody = {
   success : boolean,
 }
 
+type GetCurationModesRequestBody = {
+  credentials : HTTPCredentials
+}
+
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
   beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
@@ -118,11 +122,26 @@ export async function login(credentials : Credentials) : Promise<boolean> {
 }
 
 export async function getUserCurationModes(credentials : Credentials) : Promise<CurationMode[]> {
-  return [
-    {key : "all", name : "All"},
-    //{key : "half", name : "Half"},
-    {key : "no_politics", name : "No Politics"}
-  ]
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : GetCurationModesRequestBody = {
+    credentials : httpCredentials,
+  }
+  let result : CurationMode[] = [];
+  await fetch(`${CURATE_API_PATH}/get_curation_modes`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      result = json.curation_modes;
+      console.log(json)
+    })
+    .catch(error => console.log(error));
+  
+  return result;
 }
   
 export async function getFilters() : Promise<CurationMode[]> {

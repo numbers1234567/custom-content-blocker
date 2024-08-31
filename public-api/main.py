@@ -108,16 +108,20 @@ def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurat
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
+    session = session_manager[token]
+    if not isinstance(session, SessionUser):
+        raise Exception("[ERROR]: Session is not an authenticated session")
+    
     try:
-        session = session_manager[token]
-        if not isinstance(session, SessionUser):
-            raise Exception("[ERROR]: Session is not an authenticated session")
         curation_mode = session_manager[token].create_curation_mode(mode_name)
         
     except Exception as e:
         print("[ERROR]: Failed to create curation mode")
         print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to create curation mode.")
+    
+    if not curation_mode:
+        raise HTTPException(status_code=400, detail="User is not allowed to create a new curation mode.")
 
     return CreateCurationModeResponseBody(curation_mode=curation_mode)
 

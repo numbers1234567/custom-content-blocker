@@ -87,7 +87,7 @@ A login endpoint which returns a token used
     for future requests.
 """
 @app.post("/login")
-def login(request : LoginRequestBody) -> LoginResponseBody:
+async def login(request : LoginRequestBody) -> LoginResponseBody:
     # Unpack request
     credentials = request.credentials
     token = credentials.token
@@ -101,7 +101,7 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
     return LoginResponseBody(success=True)
 
 @app.post("/create_curation_mode")
-def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+async def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
     token, mode_name = request.credentials.token, request.mode_name
     
@@ -126,7 +126,7 @@ def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurat
     return CreateCurationModeResponseBody(curation_mode=curation_mode)
 
 @app.post("/recommend_post")
-def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
+async def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
     # Unpack request
     token,curate_key,post_id,positive = request.credentials.token,request.curate_key,request.post_id,request.options.positive
     

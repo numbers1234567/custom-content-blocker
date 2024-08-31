@@ -53,6 +53,8 @@ class SessionUser(Session):
         user_data = get_user_data(email)
         self.signup_time = user_data.create_utc
         self.curate_modes = user_data.curate_modes
+
+        self.curate_mode_limit = 10  # Current default
         
         if user_data==None:
             if not self.sign_up_user():
@@ -62,7 +64,9 @@ class SessionUser(Session):
         success, status = sign_up_user_db_manager(self.email)
         return success
     
-    def create_curation_mode(self, mode_name : str) -> CurationMode:
+    def create_curation_mode(self, mode_name : str) -> CurationMode | None:
+        if len(self.curate_modes) >= 10:
+            return None
         curate_data = create_curation_mode(self.email, mode_name)
 
         return curate_data.curation_mode

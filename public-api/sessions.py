@@ -53,15 +53,16 @@ class SessionUser(Session):
     def __init__(self, email : str, timeout : int=60*60):
         super().__init__(timeout)
         self.email = email
+        
         user_data = get_user_data(email)
+        if user_data==None:
+            if not self.sign_up_user():
+                raise ValueError(f"Failed to create user {email}.")
+            user_data = get_user_data(email)
         self.signup_time = user_data.create_utc
         self.curate_modes = user_data.curate_modes
 
         self.curate_mode_limit = 10  # Current default
-        
-        if user_data==None:
-            if not self.sign_up_user():
-                raise ValueError(f"Failed to create user {email}.")
 
     def sign_up_user(self) -> bool:
         success, status = sign_up_user_db_manager(self.email)

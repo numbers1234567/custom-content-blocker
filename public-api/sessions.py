@@ -12,13 +12,16 @@ from .rpc import *
 
 from .authenticator import Authenticator
 
+from threading import Lock
+
 class Session:
-    def __init__(self, timeout : int=60*60):
+    def __init__(self, timeout : int=1e12):
         self.create_time = time.time()
         self.last_action_time = self.create_time
         self.timeout = timeout
         
     def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, min_score=0.5) -> CuratedPostBatch:
+        self.last_action_time = time.time()
         curated_posts : list[CuratedPost] = []
 
         social_posts = get_recent_posts(posts_before, count_max)
@@ -45,7 +48,11 @@ class Session:
         return CuratedPostBatch(posts=curated_posts)
     
     def get_usable_curate_modes(self) -> List[CurationMode]:
+        self.last_action_time = time.time()
         return [CurationMode(key="all", name="All"), CurationMode(key="no_politics", name="No Politics")]
+    
+    def expired(self) -> bool:
+        return time.time()-self.last_action_time > self.timeout
     
     
 # An authenticated session
@@ -63,6 +70,8 @@ class SessionUser(Session):
         self.curate_modes = user_data.curate_modes
 
         self.curate_mode_limit = 10  # Current default
+
+        self.timeout = timeout
 
     def sign_up_user(self) -> bool:
         success, status = sign_up_user_db_manager(self.email)
@@ -98,8 +107,10 @@ class SessionUser(Session):
 class SessionManager:
     def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
         # identifier : Session
+        self.session_registry_lock = Lock()
         self.sessions : Dict[str, Session] = default_sessions.copy()
         self.authenticator=authenticator
+        self.max_sessions = 1000
 
     def login(self, credentials:Credentials):
         token = credentials.token
@@ -115,7 +126,12 @@ class SessionManager:
         return True
 
     def register_session(self, identifier : str, session : Session):
-        self.sessions[identifier] = session
+        with self.session_registry_lock:
+            if len(self.sessions) >= self.max_sessions:
+                for id_,session in self.sessions:
+                    if session.expired():
+                        del self.sessions[id_]
+            self.sessions[identifier] = session
 
     def __str__(self):
         return f"SessionUser {id(self)}: {len(self)}"

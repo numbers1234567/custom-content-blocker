@@ -68,6 +68,9 @@ def create_blip_head(curate_id : int):
 
     w1,b1 = np.random.rand(768, 10)*(2*stdv1) - stdv1, np.random.rand(10)*(2*stdv1) - stdv1
     w2,b2 = np.random.rand(10, 2)*(2*stdv2) - stdv2, np.random.rand(2)*(2*stdv2) - stdv2
+    
+    # Biased initialization
+    b2 = np.log([0.9, 0.1])
 
     # Insert
     try:

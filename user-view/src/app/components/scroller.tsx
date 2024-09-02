@@ -5,6 +5,8 @@ import { Credentials } from "../credentials";
 import { CurationSetting } from "../curation_settings";
 import { getCuratedPosts } from "../api_call";
 
+var nextLoadTime = 0;
+
 type PostBatchProps = {
   credentials : Credentials, 
   curationSettings : CurationSetting,
@@ -30,6 +32,7 @@ export function PostBatch(
 
       if (earliestPost != beforeUTC) setBeforeUTC(earliestPost);
       setHtmlEmbed(html);
+      nextLoadTime = Date.now()+3000*html.length;
     });
   }, []);
   return <div>
@@ -63,6 +66,7 @@ export function PostScroller({
   const [beforeUTCList, setBeforeUTCList] = useState<number[]>([Date.now()]);
 
   function appendNewPostBatch() {
+    // Avoid appending a duplicate batch 
     if (beforeUTCList.indexOf(beforeUTC)!=-1) return;
     beforeUTCList.push(beforeUTC);
     setBeforeUTCList(beforeUTCList);
@@ -74,14 +78,22 @@ export function PostScroller({
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  useEffect(() => {
-    // Add more posts if the user is reaching the end of their feed.
+
+  function checkAddPostsLoop() {
+    // Add more posts if the user is reaching the end of their feed, and sm sites are ready to serve another batch.
+    if (Date.now() < nextLoadTime) return;
     scrollLimitRef.current = Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight) - window.innerHeight;
     if (scrollLimitRef.current-scrollPos < 500)
       appendNewPostBatch();
-  }, [scrollPos])
+    setTimeout(checkAddPostsLoop, 1000);
+  }
+  checkAddPostsLoop();
 
-  return <div>
-    {beforeUTCList.map((child) => <PostBatch credentials={credentials} curationSettings={curationSettings} beforeUTC={child} setBeforeUTC={setBeforeUTC} key={child}></PostBatch> )}
+  return <div className="">
+    {beforeUTCList.map(
+      (child) => 
+      <div className="w-full flex justify-center"><PostBatch credentials={credentials} curationSettings={curationSettings} beforeUTC={child} setBeforeUTC={setBeforeUTC} key={child}></PostBatch> </div>
+    )}
+    <div className="text-5xl text-gray-500 w-full flex justify-center h-40">Loading...</div>
   </div>
 }

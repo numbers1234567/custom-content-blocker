@@ -86,6 +86,14 @@ class SessionUser(Session):
 
         return curate_data.curation_mode
     
+    def delete_curation_mode(self, curation_key : str):
+        if curation_key not in [i.key for i in self.curate_modes]:
+            return False
+        delete_curation_mode(curation_key)
+        
+        self._refresh()
+        return True
+    
     def get_usable_curate_modes(self) -> List[CurationMode]:
         return super().get_usable_curate_modes() + self.curate_modes
 

@@ -46,7 +46,7 @@ export const SocialPost = function SocialPost({embedStr} : {embedStr : string}) 
   
 
 	return (
-    <div style={{"width" : "100%", "height" : maxHeight + "px", backgroundColor : "red"}}>
+    <div style={{"width" : "100%", "height" : maxHeight + "px"}}>
       <div ref={elRef}>
         {visible && <SocialPostInner embedStr={embedStr}/>}
       </div>

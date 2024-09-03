@@ -2,6 +2,8 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from "react"
 
 const SocialPostInner = memo(function SocialPostInner({embedStr} : {embedStr : string}) {
   // https://macarthur.me/posts/script-tags-in-react/
+
+  // The following HTML should come from a trusted source.
   const elRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!elRef.current) return;

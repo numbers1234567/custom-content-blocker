@@ -112,7 +112,7 @@ export function PostScroller({
   return <div className="">
     {beforeUTCList.map(
       (child) => 
-      <div className="w-full flex justify-center"><PostBatch credentials={credentials} curationSettings={curationSettings} beforeUTC={child} setBeforeUTC={setBeforeUTC} key={child}></PostBatch> </div>
+      <div className="w-full flex justify-center" key={child}><PostBatch credentials={credentials} curationSettings={curationSettings} beforeUTC={child} setBeforeUTC={setBeforeUTC}></PostBatch> </div>
     )}
     <div className="text-5xl text-gray-500 w-full flex justify-center h-40">Loading...</div>
   </div>

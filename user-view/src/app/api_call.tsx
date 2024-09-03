@@ -83,6 +83,17 @@ type CreateCurationModeResponseBody = {
   curation_mode : HTTPCurationMode
 }
 
+type RecommendPostOptions = {
+  positive : boolean
+}
+
+type RecommendPostRequestBody = {
+  credentials : HTTPCredentials,
+  curate_key : string,
+  post_id : string,
+  options : RecommendPostOptions
+}
+
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
   beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
@@ -188,4 +199,25 @@ export async function createNewCurateMode(credentials : Credentials, mode_name :
     })
   
   return result;
+}
+
+export async function recommend_post(credentials : Credentials, curate_key : string, post_id : string, positive : boolean) {
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : RecommendPostRequestBody = {
+    credentials : httpCredentials,
+    curate_key : curate_key,
+    post_id : post_id,
+    options : {positive : positive}
+  }
+  fetch(`${CURATE_API_PATH}/recommend_post`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      
+    })
 }

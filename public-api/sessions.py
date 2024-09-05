@@ -49,7 +49,7 @@ class Session:
     
     def get_usable_curate_modes(self) -> List[CurationMode]:
         self.last_action_time = time.time()
-        return [CurationMode(key="all", name="All"), CurationMode(key="no_politics", name="No Politics")]
+        return [CurationMode(key="all", name="All"), CurationMode(key="no_politics", name="No Politics"), CurationMode(key="politics_only", name="Politics Only")]
     
     def expired(self) -> bool:
         return time.time()-self.last_action_time > self.timeout

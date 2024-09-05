@@ -300,4 +300,4 @@ primary_user	curation_id	curation_name	curation_key	create_utc
 39	14	cXvCxEzWAmVQqVmrQvHM	oRBkwZdfJZjlbwxWNnxPPCdMfFUEkuthaxXTXSTe	1723760378
 84	59	nLZYhkDSnrurGckObEli	ToCtxBXQppSzAdPyEhxAOVJjPIlLwoBBtNLZCxbB	1723760207
 0	0	No Politics	no_politics	0
-1	1	Politics Only	politics_only	0
+0	1	Politics Only	politics_only	0

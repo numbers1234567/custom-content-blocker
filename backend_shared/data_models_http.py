@@ -110,6 +110,7 @@ class CreateCurationModeResponseBody(BaseModel):
     curation_mode : CurationMode
 
 class DeleteCurationModeRequestBody(BaseModel):
+    credentials : Credentials
     curation_key : str
 
 class DeleteCurationModeResponseBody(BaseModel):

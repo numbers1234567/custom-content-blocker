@@ -440,3 +440,22 @@ async def _endpoint_get_user_data(request : GetUserDataRequestBody) -> GetUserDa
 
     email,user_id,create_utc,curate_modes = get_user_data(email)
     return GetUserDataResponseBody(email=email, uid=user_id, create_utc=create_utc,curate_modes=curate_modes)
+
+@app.post("/delete_curation_mode")
+async def _endpoint_delete_curation_mode(request : DeleteCurationModeRequestBody) -> DeleteCurationModeResponseBody:
+    try:
+        conn = psycopg2.connect(POSTGRES_DB_URL)
+    except:
+        raise HTTPException(status_code=500, detail="Failed to connect to database. Check credentials.")
+    
+    curate_key = request.curation_key
+
+    cur = conn.cursor()
+
+    cur.execute("""
+        DELETE FROM curation_modes
+        WHERE curation_key=%s;
+    """, (curate_key,))
+    conn.commit()
+
+    return DeleteCurationModeResponseBody()

@@ -125,6 +125,23 @@ async def create_curation_mode(request : CreateCurationModeRequestBody) -> Creat
 
     return CreateCurationModeResponseBody(curation_mode=curation_mode)
 
+@app.post("/delete_curation_mode")
+async def delete_curation_mode(request : DeleteCurationModeRequestBody) -> DeleteCurationModeResponseBody:
+    # Unpack request
+    token, curation_key = request.credentials.token, request.curation_key
+
+    if token==None or token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    session = session_manager[token]
+    if not isinstance(session, SessionUser):
+        raise HTTPException(status_code=401, detail="Session is not an authenticated session")
+    
+    if not session.delete_curation_mode(curation_key):
+        raise HTTPException(status_code=401, detail=f"User is not allowed to delete {curation_key}.")
+        
+    return DeleteCurationModeResponseBody()
+
 @app.post("/recommend_post")
 async def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
     # Unpack request

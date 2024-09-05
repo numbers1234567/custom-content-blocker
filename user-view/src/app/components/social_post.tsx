@@ -25,7 +25,7 @@ export const SocialPost = function SocialPost({embedStr} : {embedStr : string}) 
   const elRef = useRef<HTMLDivElement>(null);
 
   const [scrollPos, setScrollPos] = useState<number>(1000);
-  const [visible, setVisible] = useState<boolean>(true);
+  const [visible, setVisible] = useState<boolean>(false);
   const [maxHeight, setMaxHeight] = useState<number>(10);
 
 

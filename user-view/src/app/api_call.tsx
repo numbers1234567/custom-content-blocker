@@ -96,7 +96,7 @@ type RecommendPostRequestBody = {
 
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
-  beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
+  beforeUTC : number, countMax : number = 10, countMin : number = 1, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
   let result : CuratePostsResponseBody = {posts : []};
   const requestBody : CuratePostsRequestBody = {
     credentials : toHTTPCredentials(credentials),

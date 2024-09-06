@@ -14,18 +14,18 @@ const SocialPostInner = memo(function SocialPostInner({embedStr} : {embedStr : s
     // Inject the markup, triggering a re-run! 
     elRef.current.innerHTML = '';
     elRef.current.append(documentFragment);
-	});
+	}, []);
   return <div 
     ref={elRef} 
     dangerouslySetInnerHTML={{ __html: embedStr }}>
   </div>
 })
 
-export const SocialPost = function SocialPost({embedStr} : {embedStr : string}) {
+// This is so messed up because I'm trying to accomodate a black box
+export const SocialPost = function SocialPost({embedStr, visible, setVisible} : {embedStr : string, visible : boolean, setVisible : (a : boolean) => void}) {
   const elRef = useRef<HTMLDivElement>(null);
 
   const [scrollPos, setScrollPos] = useState<number>(1000);
-  const [visible, setVisible] = useState<boolean>(false);
   const [maxHeight, setMaxHeight] = useState<number>(10);
 
 
@@ -34,14 +34,24 @@ export const SocialPost = function SocialPost({embedStr} : {embedStr : string}) 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
-  if (elRef.current) {
+
+  function maxHeightHandler() {
+    if (!elRef.current) return;
     if (maxHeight < elRef.current.clientHeight) {
       setMaxHeight(elRef.current.clientHeight);
     }
+    if (visible) setTimeout(maxHeightHandler, 1000);
+  }
+
+  useEffect(maxHeightHandler, [visible])
+
+  
+  if (elRef.current) {
     var rect = elRef.current.getBoundingClientRect();
     if (visible && (rect.bottom < -500 || rect.top > 1500)) setVisible(false);
-    if (!visible && (rect.bottom > -500 && rect.top < 1500)) setVisible(true);
+    if (!visible && (rect.bottom > -500 && rect.top < 1500)) {
+      setTimeout(()=>(!visible && (rect.bottom > -500 && rect.top < 1500)) && setVisible(true), 1000);
+    }
   }
   
 

@@ -18,9 +18,10 @@ function SocialPostVote(
   {embedStr, post_id, credentials, curationSettings} : 
   {embedStr : string, post_id : string, credentials : Credentials, curationSettings : CurationSetting}
 ) {
+  const [visible, setVisible] = useState<boolean>(false);
   return <div className="flex items-start">
-    <SocialPost embedStr={embedStr}/>
-    <div className="">
+    <SocialPost embedStr={embedStr} visible={visible} setVisible={setVisible}/>
+    {visible && <div className="">
       <div onClick={()=>recommend_post(credentials, curationSettings.curationMode.key, post_id, true)} className="h-12 w-12 m-2">
         <svg viewBox="0 0 200 200">
           <circle cx="100" cy="100" r="100" stroke="gray" stroke-width="3" fill="green"/>
@@ -31,7 +32,7 @@ function SocialPostVote(
           <circle cx="100" cy="100" r="100" stroke="gray" stroke-width="3" fill="red"/>
         </svg>
       </div>
-    </div>
+    </div>}
   </div>
 }
 

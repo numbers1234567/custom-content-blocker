@@ -46,14 +46,15 @@ export const SocialPost = function SocialPost({embedStr, visible, setVisible} : 
 
   useEffect(maxHeightHandler, [visible])
 
-  
-  if (elRef.current) {
-    var rect = elRef.current.getBoundingClientRect();
-    if (visible && (rect.bottom < -500 || rect.top > 1500)) setVisible(false);
-    if (!visible && (rect.bottom > -500 && rect.top < 1500)) {
-      setTimeout(()=>(!visible && (rect.bottom > -500 && rect.top < 1500)) && setVisible(true), 1000);
+  useEffect( () => {
+    if (elRef.current) {
+      var rect = elRef.current.getBoundingClientRect();
+      if (visible && (rect.bottom < -500 || rect.top > 1500)) setVisible(false);
+      if (!visible && (rect.bottom > -500 && rect.top < 1500)) {
+        setTimeout(()=>(!visible && (rect.bottom > -500 && rect.top < 1500)) && setVisible(true), 1000);
+      }
     }
-  }
+  });
   
 
 	return (

@@ -109,8 +109,21 @@ class CreateCurationModeRequestBody(BaseModel):
 class CreateCurationModeResponseBody(BaseModel):
     curation_mode : CurationMode
 
+class DeleteCurationModeRequestBody(BaseModel):
+    credentials : Credentials
+    curation_key : str
+
+class DeleteCurationModeResponseBody(BaseModel):
+    pass
+
 class LoginRequestBody(BaseModel):
     credentials : Credentials
 
 class LoginResponseBody(BaseModel):
     success : bool
+
+class GetCurationModesRequestBody(BaseModel):
+    credentials : Credentials
+
+class GetCurationModesResponseBody(BaseModel):
+    curation_modes : list[CurationMode]

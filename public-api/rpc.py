@@ -26,21 +26,20 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
         return random.random()
     if curation_key=="all":
         return 1
-    if curation_key=="no_politics":
-        try:
-            response = requests.get(f"{CURATOR}/get_curate_score?post_id={url_encode(post_id)}&curate_key=no_politics")
-        except Exception as e:
-            print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_key}")
-            print("   Error Message: " + str(e))
-            return 1
-        try:
-            result = float(response.content)
-        except Exception as e:
-            print(f"[ERROR]: Could not convert response score to float.")
-            print("   Error Message: " + str(e))
+    try:
+        response = requests.get(f"{CURATOR}/get_curate_score?post_id={url_encode(post_id)}&curate_key={curation_key}")
+    except Exception as e:
+        print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_key}")
+        print("   Error Message: " + str(e))
+        return 1
+    try:
+        result = float(response.content)
+    except Exception as e:
+        print(f"[ERROR]: Could not convert response score to float.")
+        print("   Error Message: " + str(e))
 
-        # Clamp result
-        return max(min(result, 1), 0)
+    # Clamp result
+    return max(min(result, 1), 0)
     
 def get_user_data(email : str) -> GetUserDataResponseBody|None:
     response = requests.post(f"{POST_DB_MANAGER}/get_user_data", json={
@@ -67,6 +66,13 @@ def create_curation_mode(email : str, curation_name : str) -> CreateCurationMode
     )
 
     return CreateCurationModeResponseBody.model_validate(json.loads(response.content))
+
+def delete_curation_mode(curation_key : str) -> DeleteCurationModeResponseBody:
+    response = requests.post(f"{POST_DB_MANAGER}/delete_curation_mode",
+        json={"curation_key" : curation_key}
+    )
+
+    return DeleteCurationModeResponseBody.model_validate(json.loads(response.content))
 
 def recommend_post(post_id : str, curate_key : str, positive : bool) -> RecommendPostResponseBody:
     response = requests.post(f"{CURATOR}/recommend_post",

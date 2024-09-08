@@ -87,7 +87,7 @@ A login endpoint which returns a token used
     for future requests.
 """
 @app.post("/login")
-def login(request : LoginRequestBody) -> LoginResponseBody:
+async def login(request : LoginRequestBody) -> LoginResponseBody:
     # Unpack request
     credentials = request.credentials
     token = credentials.token
@@ -101,39 +101,61 @@ def login(request : LoginRequestBody) -> LoginResponseBody:
     return LoginResponseBody(success=True)
 
 @app.post("/create_curation_mode")
-def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
+async def create_curation_mode(request : CreateCurationModeRequestBody) -> CreateCurationModeResponseBody:
     # Unpack request
     token, mode_name = request.credentials.token, request.mode_name
     
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
     
+    session = session_manager[token]
+    if not isinstance(session, SessionUser):
+        raise HTTPException(status_code=401, detail="[ERROR]: Session is not an authenticated session")
+    
     try:
-        session = session_manager[token]
-        if not isinstance(session, SessionUser):
-            raise Exception("[ERROR]: Session is not an authenticated session")
         curation_mode = session_manager[token].create_curation_mode(mode_name)
         
     except Exception as e:
         print("[ERROR]: Failed to create curation mode")
         print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to create curation mode.")
+    
+    if not curation_mode:
+        raise HTTPException(status_code=400, detail="User is not allowed to create a new curation mode.")
 
     return CreateCurationModeResponseBody(curation_mode=curation_mode)
 
+@app.post("/delete_curation_mode")
+async def delete_curation_mode(request : DeleteCurationModeRequestBody) -> DeleteCurationModeResponseBody:
+    # Unpack request
+    token, curation_key = request.credentials.token, request.curation_key
+
+    if token==None or token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    session = session_manager[token]
+    if not isinstance(session, SessionUser):
+        raise HTTPException(status_code=401, detail="Session is not an authenticated session")
+    
+    if not session.delete_curation_mode(curation_key):
+        raise HTTPException(status_code=401, detail=f"User is not allowed to delete {curation_key}.")
+        
+    return DeleteCurationModeResponseBody()
+
 @app.post("/recommend_post")
-def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
+async def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:
     # Unpack request
     token,curate_key,post_id,positive = request.credentials.token,request.curate_key,request.post_id,request.options.positive
     
     if token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    session = session_manager[token]
+    if not isinstance(session, SessionUser):
+        raise HTTPException(status_code=401, detail="[ERROR]: Session is not an authenticated session")
+    
     result = True
     try:
-        session = session_manager[token]
-        if not isinstance(session, SessionUser):
-            raise Exception("[ERROR]: Session is not an authenticated session")
-        
         result = session.recommend_post(curate_key,post_id,positive)
         
     except Exception as e:
@@ -145,3 +167,21 @@ def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseB
         raise HTTPException(status_code=401, detail="User is not allowed to modify this curation mode.")
 
     return RecommendPostResponseBody()
+
+@app.post("/get_curation_modes")
+async def get_curation_modes(request : GetCurationModesRequestBody) -> GetCurationModesResponseBody:
+    token = request.credentials.token
+    if token not in session_manager:
+        raise HTTPException(status_code=401, detail="No session exists for the user.")
+    
+    session = session_manager[token]
+    
+    try:
+        result = session.get_usable_curate_modes()
+
+    except Exception as e:
+        print("[ERROR]: Failed to recommend post")
+        print("   Message: " + str(e))
+        raise HTTPException(status_code=500, detail="Failed to recommend post.")
+    
+    return GetCurationModesResponseBody(curation_modes=result)

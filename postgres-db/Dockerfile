@@ -86,10 +86,10 @@ RUN set -ex; \
 	gpgconf --kill all; \
 	rm -rf "$GNUPGHOME"
 
-ENV PG_MAJOR 17
+ENV PG_MAJOR 16
 ENV PATH $PATH:/usr/lib/postgresql/$PG_MAJOR/bin
 
-ENV PG_VERSION 17~beta3-1.pgdg120+1
+ENV PG_VERSION 16.4-1.pgdg120+1
 
 RUN set -ex; \
 	\

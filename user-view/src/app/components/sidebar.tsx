@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getFilters, getSocialAppFilters, getUserCurationModes } from "../api_call";
+import { createNewCurateMode, getFilters, getSocialAppFilters, getUserCurationModes } from "../api_call";
 import { Credentials } from "../credentials";
 import { cloneCurationSetting, CurationMode, CurationSetting } from "../curation_settings";
 import { LoginButton } from "./login_button";
@@ -47,6 +47,7 @@ export function Sidebar({
   }
 
   const ref = useRef<HTMLDivElement>(null);
+  const newCurateModeNameRef = useRef<HTMLInputElement>(null);
 
   function hide() {
     if (!ref.current) return;
@@ -57,8 +58,8 @@ export function Sidebar({
     ref.current.style.left = "0px";
   }
 
-  return <div className="h-screen bg-white w-64 p-4 text-black border-r-2 absolute transition-all" ref={ref}>
-    <div>
+  return <div className="h-screen bg-white w-64 p-4 text-black border-r-2 absolute transition-all" style={{left : "0px"}} ref={ref}>
+    <div className="">
       {!credentials.isSet && <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>}
       <p>Curation Modes</p>
       {availableCurationModes.map((val)=>{
@@ -82,6 +83,18 @@ export function Sidebar({
         </svg>
       </div> 
     </button>
+    <div>
+      <input type="text" id="curation-name" className="border-gray border-2 float-left w-44 mt-1 mr-2" ref={newCurateModeNameRef}></input>
+      <button className="w-9 h-9 border-gray border-2 m-0 p-0 text-xl text-gray-500" 
+        onClick={()=>{
+          if (!newCurateModeNameRef.current) return;
+          createNewCurateMode(credentials, newCurateModeNameRef.current.value);
+          newCurateModeNameRef.current.value = "";
+          getUserCurationModes(credentials).then(setAvailableCurationModes);
+        }}>
+        +
+      </button>
+    </div>
     {/*<div className="w-full h-6">
       <p className="inline-block m-2">+</p>
       <p className="inline-block m-2">Create New</p>

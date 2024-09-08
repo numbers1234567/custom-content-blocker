@@ -70,9 +70,33 @@ type LoginResponseBody = {
   success : boolean,
 }
 
+type GetCurationModesRequestBody = {
+  credentials : HTTPCredentials
+}
+
+type CreateCurationModeRequestBody = {
+  credentials : HTTPCredentials,
+  mode_name : string
+}
+
+type CreateCurationModeResponseBody = {
+  curation_mode : HTTPCurationMode
+}
+
+type RecommendPostOptions = {
+  positive : boolean
+}
+
+type RecommendPostRequestBody = {
+  credentials : HTTPCredentials,
+  curate_key : string,
+  post_id : string,
+  options : RecommendPostOptions
+}
+
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
-  beforeUTC : number, countMax : number = 10, countMin : number = 5, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
+  beforeUTC : number, countMax : number = 10, countMin : number = 1, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
   let result : CuratePostsResponseBody = {posts : []};
   const requestBody : CuratePostsRequestBody = {
     credentials : toHTTPCredentials(credentials),
@@ -118,11 +142,25 @@ export async function login(credentials : Credentials) : Promise<boolean> {
 }
 
 export async function getUserCurationModes(credentials : Credentials) : Promise<CurationMode[]> {
-  return [
-    {key : "all", name : "All"},
-    //{key : "half", name : "Half"},
-    {key : "no_politics", name : "No Politics"}
-  ]
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : GetCurationModesRequestBody = {
+    credentials : httpCredentials,
+  }
+  let result : CurationMode[] = [];
+  await fetch(`${CURATE_API_PATH}/get_curation_modes`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      result = json.curation_modes;
+    })
+    .catch(error => console.log(error));
+  
+  return result;
 }
   
 export async function getFilters() : Promise<CurationMode[]> {
@@ -141,6 +179,45 @@ export async function getSocialAppFilters() : Promise<CurationMode[]> {
   ]
 }
 
-export async function createNewCurateMode(credentials : Credential) {
+export async function createNewCurateMode(credentials : Credentials, mode_name : string) : Promise<CurationMode> {
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : CreateCurationModeRequestBody = {
+    credentials : httpCredentials,
+    mode_name : mode_name
+  }
+  let result : CurationMode = {key : "Failed", name : "Failed"};
+  await fetch(`${CURATE_API_PATH}/create_curation_mode`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      result = json.curation_mode;
+    })
+  
+  return result;
+}
 
+export async function recommend_post(credentials : Credentials, curate_key : string, post_id : string, positive : boolean) {
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : RecommendPostRequestBody = {
+    credentials : httpCredentials,
+    curate_key : curate_key,
+    post_id : post_id,
+    options : {positive : positive}
+  }
+  fetch(`${CURATE_API_PATH}/recommend_post`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      
+    })
 }

@@ -21,7 +21,7 @@ CREATE TABLE user_credentials (
 );
 
 CREATE TABLE curation_modes (
-    primary_user INT NOT NULL REFERENCES user_credentials(user_id),
+    primary_user INT NOT NULL REFERENCES user_credentials(user_id) ON DELETE CASCADE,
     curation_id INT NOT NULL UNIQUE,
     curation_name VARCHAR(20),
     curation_key VARCHAR(40) UNIQUE,
@@ -30,7 +30,7 @@ CREATE TABLE curation_modes (
 );
 
 CREATE TABLE blip_curation_heads (
-    curation_id INT NOT NULL REFERENCES curation_modes(curation_id),
+    curation_id INT NOT NULL REFERENCES curation_modes(curation_id) ON DELETE CASCADE,
     weight1 DECIMAL[768][10],
     weight2 DECIMAL[10][2],
     bias1 DECIMAL[10],

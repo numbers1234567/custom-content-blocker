@@ -1,3 +1,4 @@
+"use client"
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react"
 
 const SocialPostInner = memo(function SocialPostInner({embedStr} : {embedStr : string}) {

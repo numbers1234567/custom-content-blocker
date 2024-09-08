@@ -86,6 +86,8 @@ export function PostScroller({
   // Children are defined by their beforeUTC prop
   const [beforeUTCList, setBeforeUTCList] = useState<number[]>([Date.now()]);
 
+  const elRef = useRef<HTMLDivElement>(null);
+
   function appendNewPostBatch() {
     // Avoid appending a duplicate batch 
     if (beforeUTCList.indexOf(beforeUTC)!=-1) return;
@@ -103,14 +105,15 @@ export function PostScroller({
   function checkAddPostsLoop() {
     // Add more posts if the user is reaching the end of their feed, and sm sites are ready to serve another batch.
     if (Date.now() < nextLoadTime) return;
-    scrollLimitRef.current = Math.max( document.body.scrollHeight, document.body.offsetHeight, document.documentElement.clientHeight, document.documentElement.scrollHeight, document.documentElement.offsetHeight) - window.innerHeight;
+    if (!elRef.current) return;
+    scrollLimitRef.current = Math.max( elRef.current.scrollHeight, elRef.current.offsetHeight, elRef.current.clientHeight, elRef.current.scrollHeight, elRef.current.offsetHeight) - window.innerHeight;
     if (scrollLimitRef.current-scrollPos < 500)
       appendNewPostBatch();
     setTimeout(checkAddPostsLoop, 1000);
   }
   checkAddPostsLoop();
 
-  return <div className="">
+  return <div className="" ref={elRef}>
     {beforeUTCList.map(
       (child) => 
       <div className="flex justify-center" key={child}><PostBatch credentials={credentials} curationSettings={curationSettings} beforeUTC={child} setBeforeUTC={setBeforeUTC}></PostBatch> </div>

@@ -83,7 +83,7 @@ export function Sidebar({
         </svg>
       </div> 
     </button>
-    <div>
+    {credentials.isSet && <div>
       <input type="text" id="curation-name" className="border-gray border-2 float-left w-44 mt-1 mr-2" ref={newCurateModeNameRef}></input>
       <button className="w-9 h-9 border-gray border-2 m-0 p-0 text-xl text-gray-500" 
         onClick={()=>{
@@ -94,7 +94,7 @@ export function Sidebar({
         }}>
         +
       </button>
-    </div>
+    </div>}
     {/*<div className="w-full h-6">
       <p className="inline-block m-2">+</p>
       <p className="inline-block m-2">Create New</p>

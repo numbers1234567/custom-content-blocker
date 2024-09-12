@@ -219,7 +219,7 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
         # BLIP features
         try:
             has_image = len(post.media_data.images_b64) > 0
-            features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0].decode('utf-8') if has_image else None)
+            features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0] if has_image else None)
 
             cur.execute("""
                 INSERT INTO blip_features (internal_id, features)

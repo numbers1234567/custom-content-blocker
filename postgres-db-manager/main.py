@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Social Media Handlers
 from .SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
 from .SocialAPIHandlers.RedditClient import RedditClient
+from .SocialAPIHandlers.YoutubeClient import YoutubeClient
 
 # third-party services
 from huggingface_hub import get_inference_endpoint
@@ -59,6 +60,7 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 
 # Social Media APIs
 reddit_api_access = True
+youtube_api_access = True
 try:
     _REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
     _REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
@@ -68,6 +70,12 @@ try:
 except:
     print("[LOG]: No access to Reddit API. Continuing without.")
     reddit_api_access = False
+
+try:
+    YOUTUBE_API_KEY = os.environ["CONTENT_CURATION_YT_DATA_KEY"]
+except:
+    print("[LOG]: No access to YouTube API. Continuing without.")
+    youtube_api_access = False
 
 # HuggingFace inference endpoints
 huggingface_access = True
@@ -104,7 +112,8 @@ def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=N
 
 
 SOCIAL_CLIENTS = []
-if reddit_api_access: SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
+#if reddit_api_access:  SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
+if youtube_api_access: SOCIAL_CLIENTS.append(YoutubeClient(YOUTUBE_API_KEY))
 
 
 #################

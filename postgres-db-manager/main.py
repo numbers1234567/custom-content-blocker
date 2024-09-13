@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # Social Media Handlers
 from .SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
 from .SocialAPIHandlers.RedditClient import RedditClient
+from .SocialAPIHandlers.YoutubeClient import YoutubeClient
 
 # third-party services
 from huggingface_hub import get_inference_endpoint
@@ -32,8 +33,9 @@ import json
 import requests
 
 import multiprocessing as mp
+import threading
 
-from typing import Union,Dict,Tuple
+from typing import Union,Dict,Tuple,Generator
 from collections.abc import Iterable
 
 import time
@@ -59,6 +61,7 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 
 # Social Media APIs
 reddit_api_access = True
+youtube_api_access = True
 try:
     _REDDIT_API_CLIENT_ID     = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_ID"]
     _REDDIT_API_CLIENT_SECRET = os.environ["CONTENT_CURATION_REDDIT_API_CLIENT_SECRET"]
@@ -68,6 +71,12 @@ try:
 except:
     print("[LOG]: No access to Reddit API. Continuing without.")
     reddit_api_access = False
+
+try:
+    YOUTUBE_API_KEY = os.environ["CONTENT_CURATION_YT_DATA_KEY"]
+except:
+    print("[LOG]: No access to YouTube API. Continuing without.")
+    youtube_api_access = False
 
 # HuggingFace inference endpoints
 huggingface_access = True
@@ -104,7 +113,8 @@ def get_blip_features(text:str, has_image:bool, base_64_image:Union[None, str]=N
 
 
 SOCIAL_CLIENTS = []
-if reddit_api_access: SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
+if reddit_api_access:  SOCIAL_CLIENTS.append(RedditClient(_REDDIT_API_CLIENT_ID, _REDDIT_API_CLIENT_SECRET, _REDDIT_API_PASSWORD, _REDDIT_API_USERNAME, _REDDIT_API_USER_AGENT))
+if youtube_api_access: SOCIAL_CLIENTS.append(YoutubeClient(YOUTUBE_API_KEY))
 
 
 #################
@@ -219,7 +229,7 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
         # BLIP features
         try:
             has_image = len(post.media_data.images_b64) > 0
-            features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0].decode('utf-8') if has_image else None)
+            features = get_blip_features(post.media_data.text, has_image, post.media_data.images_b64[0] if has_image else None)
 
             cur.execute("""
                 INSERT INTO blip_features (internal_id, features)
@@ -250,6 +260,11 @@ Add posts to the database from social
 
 Expected to run every hour.
 """
+max_id = get_max_internal_id()
+num_left = 0
+
+max_id_lock = threading.Lock()
+num_left_lock = threading.Lock()
 @app.post("/update_post_db")
 async def update_post_db(): 
     if not huggingface_blip_endpoint:
@@ -259,37 +274,42 @@ async def update_post_db():
     #  they might both get the same maximum internal id, and there will be a conflict
     #  when inserting new posts. This is not an issue, since this should run periodically.
     #  However, if it comes to that, we could add a lock for this)
-    def get_and_add_posts():
-        huggingface_blip_endpoint.resume()
-        # Wait for things to initialize
-        huggingface_blip_endpoint.wait()
 
 
-        max_id = get_max_internal_id()
+    def get_and_add_posts(social_posts : Iterable[SocialPostBaseData]):
+        # Scary
+        global num_left
+        global max_id
+        with num_left_lock:
+            if num_left_lock==0:
+                huggingface_blip_endpoint.resume()
+                # Wait for things to initialize
+                huggingface_blip_endpoint.wait()
+            num_left += 1
 
-        # Get all trending posts
-        social_posts: list[SocialPostBaseData] = []
-        for client in SOCIAL_CLIENTS:
-            social_posts = []
+        # Try to insert every post
+        for post in social_posts:
             try:
-                social_posts = client.get_relevant_posts()
+                with max_id_lock:
+                    add_id = max_id + 1
+                    max_id += 1
+                insert_post_db(post, add_id=add_id)
+            
             except Exception as e:
-                print("[ERROR]: Failed to retrieve posts for " + str(client) + "!")
-                print("   Error message: " + str(e))
-
-            for post in social_posts:
-                # Insert post in database
-                try:
-                    if insert_post_db(post, add_id=max_id+1): max_id += 1
-                except Exception as e:
-                    print(f"[ERROR]: Failed to insert post {post.metadata.post_id} into database!")
-                    print("   Error message: " + str(e))
+                # Unknown exception
+                print(f"[ERROR]: Failed to insert post {post.metadata.post_id}.")
+                print("   Message: " + str(e))
         
-        huggingface_blip_endpoint.pause()
+        with num_left_lock:
+            num_left -= 1
+            if num_left <= 0:
+                huggingface_blip_endpoint.pause()
 
-    # Process to return an indicator of successfully retrieved and started process.
-    p = mp.Process(target=get_and_add_posts)
-    p.start()
+    social_post_generators : List[Generator[SocialPostBaseData, None, None]] = [client.get_relevant_posts() for client in SOCIAL_CLIENTS]
+    # Thread for each social platform
+    for social_post_generator in social_post_generators:
+        thread = threading.Thread(target=get_and_add_posts, args=[social_post_generator])
+        thread.start()
     
     return {}
 

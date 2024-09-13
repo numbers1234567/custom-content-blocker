@@ -61,7 +61,7 @@ class RedditPostGetter(PostGetter):
         imgs_b64 = []
         for url in img_urls:
             try:
-                imgs_b64.append(base64.encodebytes(requests.get(url).content))
+                imgs_b64.append(base64.encodebytes(requests.get(url).content).decode('utf-8'))
             except:
                 print(f"[ERROR]: Failed to retrieve image {url} for {self.get_post_id()}!")
                 print("   Error: " + str(e))

@@ -281,11 +281,11 @@ async def update_post_db():
         global num_left
         global max_id
         with num_left_lock:
+            if num_left_lock==0:
+                huggingface_blip_endpoint.resume()
+                # Wait for things to initialize
+                huggingface_blip_endpoint.wait()
             num_left += 1
-
-        huggingface_blip_endpoint.resume()
-        # Wait for things to initialize
-        huggingface_blip_endpoint.wait()
 
         # Try to insert every post
         for post in social_posts:

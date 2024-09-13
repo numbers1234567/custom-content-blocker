@@ -36,7 +36,7 @@ class YoutubePostGetter(PostGetter):
         return self.post_data["snippet"]["title"]
 
     def get_create_utc(self) -> int:
-        return int((datetime.strptime('2024-09-07T17:46:16Z', "%Y-%m-%dT%H:%M:%SZ") - datetime(1970, 1, 1)).total_seconds())
+        return int((datetime.strptime(self.post_data["snippet"]["publishedAt"], "%Y-%m-%dT%H:%M:%SZ") - datetime(1970, 1, 1)).total_seconds())
     
     def get_post_id(self) -> str:
         return "YouTube: " + self.post_data["id"]

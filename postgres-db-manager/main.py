@@ -199,7 +199,10 @@ def get_max_internal_id() -> int:
 
     return max_id
 
+max_id_lock = threading.Lock()
+max_id = get_max_internal_id()
 def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
+    global max_id
     # Try to connect
     try:
         conn = psycopg2.connect(POSTGRES_DB_URL)
@@ -215,14 +218,16 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
         return False
     
     try:
-        if add_id == None: 
-            add_id = get_max_internal_id(conn)+1
+        with max_id_lock:
+            if add_id == None: 
+                add_id = max_id+1
 
-        
-        cur.execute("""
-            INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
-                VALUES (%s, %s, %s, %s, %s);
-        """, (add_id, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
+
+            cur.execute("""
+                INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
+                    VALUES (%s, %s, %s, %s, %s);
+            """, (add_id, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
+            max_id += 1
 
         # Insert extra features here
 
@@ -260,10 +265,7 @@ Add posts to the database from social
 
 Expected to run every hour.
 """
-max_id = get_max_internal_id()
 num_left = 0
-
-max_id_lock = threading.Lock()
 num_left_lock = threading.Lock()
 @app.post("/update_post_db")
 async def update_post_db(): 
@@ -279,21 +281,19 @@ async def update_post_db():
     def get_and_add_posts(social_posts : Iterable[SocialPostBaseData]):
         # Scary
         global num_left
-        global max_id
         with num_left_lock:
             if num_left==0:
+                print("[LOG]: Resuming BLIP endpoint")
                 huggingface_blip_endpoint.resume()
                 # Wait for things to initialize
             huggingface_blip_endpoint.wait()
+            print("[LOG]: Resumed BLIP endpoint")
             num_left += 1
 
         # Try to insert every post
         for post in social_posts:
             try:
-                with max_id_lock:
-                    add_id = max_id + 1
-                    max_id += 1
-                insert_post_db(post, add_id=add_id)
+                insert_post_db(post)
             
             except Exception as e:
                 # Unknown exception
@@ -303,6 +303,7 @@ async def update_post_db():
         with num_left_lock:
             num_left -= 1
             if num_left <= 0:
+                print("[LOG]: Paused BLIP endpoint")
                 huggingface_blip_endpoint.pause()
 
     social_post_generators : List[Generator[SocialPostBaseData, None, None]] = [client.get_relevant_posts() for client in SOCIAL_CLIENTS]

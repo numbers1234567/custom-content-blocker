@@ -263,33 +263,15 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
 Add posts to the database from social
     media APIs.
 
-Expected to run every hour.
+Expected to run periodically.
 """
-num_left = 0
-num_left_lock = threading.Lock()
 @app.post("/update_post_db")
 async def update_post_db(): 
     if not huggingface_blip_endpoint:
         raise HTTPException(status_code=400, detail="Server does not have access to HuggingFace endpoint.")
-    # Add posts to the database
-    # Get maximum internal id (One concern is, if two calls to update_post_db() are made,
-    #  they might both get the same maximum internal id, and there will be a conflict
-    #  when inserting new posts. This is not an issue, since this should run periodically.
-    #  However, if it comes to that, we could add a lock for this)
 
 
     def get_and_add_posts(social_posts : Iterable[SocialPostBaseData]):
-        # Scary
-        global num_left
-        with num_left_lock:
-            if num_left==0:
-                print("[LOG]: Resuming BLIP endpoint")
-                huggingface_blip_endpoint.resume()
-                # Wait for things to initialize
-            huggingface_blip_endpoint.wait()
-            print("[LOG]: Resumed BLIP endpoint")
-            num_left += 1
-
         # Try to insert every post
         for post in social_posts:
             try:
@@ -299,18 +281,29 @@ async def update_post_db():
                 # Unknown exception
                 print(f"[ERROR]: Failed to insert post {post.metadata.post_id}.")
                 print("   Message: " + str(e))
-        
-        with num_left_lock:
-            num_left -= 1
-            if num_left <= 0:
-                print("[LOG]: Paused BLIP endpoint")
-                huggingface_blip_endpoint.pause()
 
-    social_post_generators : List[Generator[SocialPostBaseData, None, None]] = [client.get_relevant_posts() for client in SOCIAL_CLIENTS]
-    # Thread for each social platform
-    for social_post_generator in social_post_generators:
-        thread = threading.Thread(target=get_and_add_posts, args=[social_post_generator])
-        thread.start()
+    def init_update_thread():
+        social_post_generators : List[Generator[SocialPostBaseData, None, None]] = [client.get_relevant_posts() for client in SOCIAL_CLIENTS]
+        threads : List[threading.Thread] = []
+        print("[LOG]: Resuming BLIP endpoint.")
+        huggingface_blip_endpoint.resume()
+        huggingface_blip_endpoint.wait()
+        print("[LOG]: BLIP endpoint resumed.")
+        # Thread for each social platform
+        for social_post_generator in social_post_generators:
+            thread = threading.Thread(target=get_and_add_posts, args=[social_post_generator])
+            thread.start()
+            threads.append(thread)
+
+        # Wait for clients to finish before pausing BLIP endpoint
+        for thread in threads:
+            thread.join()
+        print("[LOG]: Pausing BLIP endpoint.")
+        huggingface_blip_endpoint.pause()
+        print("[LOG]: BLIP endpoint paused.")
+    
+    thread = threading.Thread(target=init_update_thread, args=[])
+    thread.start()
     
     return {}
 

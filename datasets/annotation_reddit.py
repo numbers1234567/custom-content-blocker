@@ -132,8 +132,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tkinter
 
-media_file = open(MEDIA_CSV, "w+")
-main_file = open(MAIN_CSV, "w+")
+media_file = open(MEDIA_CSV, "w+", encoding="utf-8")
+main_file = open(MAIN_CSV, "w+", encoding="utf-8")
 
 main_file.write("ID\ttext\tlabel\tsplit\n")
 media_file.write("ID\tpath\n")

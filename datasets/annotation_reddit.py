@@ -132,6 +132,15 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tkinter
 
+media_file = open(MEDIA_CSV, "w+")
+main_file = open(MAIN_CSV, "w+")
+
+main_file.write("ID\ttext\tlabel\tsplit\n")
+media_file.write("ID\tpath\n")
+
+if not os.path.isdir(MEDIA_DIR): os.mkdir(MEDIA_DIR)
+
+next_id = 0
 quit = False
 while not quit:
     try:
@@ -142,6 +151,8 @@ while not quit:
 
     title_var = tkinter.StringVar()
     title_var.set(post_title)
+    url_var = tkinter.StringVar()
+    url_var.set(post_id)
     panel_title = tkinter.Label(root, 
         textvariable=title_var,
         font=("Arial", 25),
@@ -149,18 +160,40 @@ while not quit:
         wraplength=512,
         justify=tkinter.CENTER,
     )
+    panel_url = tkinter.Label(root, 
+        textvariable=url_var,
+        font=("Arial", 11),
+        width=50,
+        wraplength=512,
+        justify=tkinter.CENTER,
+    )
     panel_title.pack()
+    panel_url.pack()
     if len(image_data) > 0:
         img = ImageTk.PhotoImage(Image.open(io.BytesIO(image_data[0])).resize((512, 512)))
         panel = tkinter.Label(root, image=img, height=512, width=512)
         panel.pack(fill = "both")
 
     def button_callback(cls):
+        global next_id
+
+        # Save media
+        for idx,img in enumerate(image_data):
+            filename = "%s/%d_%d.png" % (MEDIA_DIR, next_id, idx)
+            Image.open(io.BytesIO(img)).save(filename)
+            media_file.write("%d\t%s\n" % (next_id, filename))
+
+        main_file.write("%d\t%s\t%d\ttrain\n" %  (next_id, post_title.replace('\n', '').replace('\t', ''), cls))
+
+        next_id += 1
         root.destroy()
 
     def quit_callback():
         global quit
         quit = True
+        root.destroy()
+
+    def skip_callback():
         root.destroy()
 
     c0_button = tkinter.Button(root,
@@ -175,9 +208,17 @@ while not quit:
         text="Quit",
         command=quit_callback,
     )
+    skip_button = tkinter.Button(root,
+        text="skip",
+        command=skip_callback,
+    )
     c0_button.pack()
     c1_button.pack()
     quit_button.pack()
+    skip_button.pack()
 
     print(post_id)
     root.mainloop()
+
+media_file.close()
+main_file.close()

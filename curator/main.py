@@ -277,7 +277,7 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     if curate_key=="half":
         return random.random()
     if curate_key=="all":
-        return 1
+        return 0
     
     features = get_post_blip_features(post_id)
 
@@ -294,12 +294,12 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
         features = torch.from_numpy(features).unsqueeze(0).type(torch.float32)
 
         result = head(features).cpu().detach().numpy()[0]
-    return result[0]/(result[0]+result[1])
+    return result[1]/(result[0]+result[1])
 
 @app.get("/get_curate_score")
 async def get_curate_score(post_id : str, curate_key : str) -> float:
     blip_score = get_blip_curate_score(post_id, curate_key)
-    return blip_score if blip_score else 1
+    return blip_score if blip_score else 0
 
 def update_blip_head(curate_key : str, post_id : str, positive : bool):
     head = load_blip_head(curate_key)

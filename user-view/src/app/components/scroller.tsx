@@ -111,6 +111,14 @@ export function PostScroller({
       appendNewPostBatch();
     setTimeout(checkAddPostsLoop, 1000);
   }
+
+  useEffect(()=>{
+    // Hacky refresh solution
+    setBeforeUTC(Date.now());
+    setScrollPos(1000),
+    scrollLimitRef.current = 0;
+    setBeforeUTCList([Date.now()]);
+  }, [curationSettings])
   checkAddPostsLoop();
 
   return <div className="" ref={elRef}>

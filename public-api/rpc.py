@@ -25,13 +25,13 @@ def get_curate_score(post_id : str, curation_key : str) -> float:
     if curation_key=="half":
         return random.random()
     if curation_key=="all":
-        return 1
+        return 0
     try:
         response = requests.get(f"{CURATOR}/get_curate_score?post_id={url_encode(post_id)}&curate_key={curation_key}")
     except Exception as e:
         print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_key}")
         print("   Error Message: " + str(e))
-        return 1
+        return 0
     try:
         result = float(response.content)
     except Exception as e:

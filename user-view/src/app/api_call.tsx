@@ -47,7 +47,7 @@ type CuratePostsRequestBody = {
     before : number,
     count_max : number,
     count_min : number,
-    min_score : number,
+    max_score : number,
   }
 }
 
@@ -96,7 +96,7 @@ type RecommendPostRequestBody = {
 
 export async function getCuratedPosts(
   credentials : Credentials, curation_settings : CurationSetting, 
-  beforeUTC : number, countMax : number = 10, countMin : number = 1, minScore : number = 0.5) : Promise<CuratePostsResponseBody> {
+  beforeUTC : number, countMax : number = 10, countMin : number = 1, maxScore : number = 0.5) : Promise<CuratePostsResponseBody> {
   let result : CuratePostsResponseBody = {posts : []};
   const requestBody : CuratePostsRequestBody = {
     credentials : toHTTPCredentials(credentials),
@@ -105,7 +105,7 @@ export async function getCuratedPosts(
       before : beforeUTC, 
       count_min : countMin, 
       count_max : countMax,
-      min_score : minScore,
+      max_score : maxScore,
     }
   }
   await fetch(`${CURATE_API_PATH}/get_curated_posts`, 

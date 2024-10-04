@@ -67,7 +67,7 @@ class CuratePostsRequestOptions(BaseModel):
     before : int  # UTC
     count_max : int = 10
     count_min : int = 5
-    min_score : float = 0.5
+    max_score : float = 0.5
 
 # get_curated_posts
 class CuratePostsRequestBody(BaseModel):
@@ -91,7 +91,7 @@ class GetCurateScoreResponseBody(BaseModel):
     curate_score : float
 
 class RecommendData(BaseModel):
-    positive : bool
+    positive : bool  # Positive in the sense that this is a "good" post
 
 class RecommendPostRequestBody(BaseModel):
     credentials : Credentials|None=None

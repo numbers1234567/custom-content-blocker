@@ -20,7 +20,7 @@ class Session:
         self.last_action_time = self.create_time
         self.timeout = timeout
         
-    def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, min_score=0.5) -> CuratedPostBatch:
+    def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, max_score=0.5) -> CuratedPostBatch:
         self.last_action_time = time.time()
         curated_posts : list[CuratedPost] = []
 
@@ -38,10 +38,10 @@ class Session:
                 CuratedPost(post_id=post_id, create_utc=create_utc, html=html_embed, curate_score=curation_scores)
             )
 
-        # Sort descending by score
-        curated_posts = sorted(curated_posts, key=lambda x : -x.curate_score)
+        # Sort ascending by score
+        curated_posts = sorted(curated_posts, key=lambda x : x.curate_score)
         for idx,post in enumerate(curated_posts):
-            if post.curate_score < min_score and idx >= count_min: 
+            if post.curate_score > max_score and idx >= count_min: 
                 curated_posts = curated_posts[:idx]
                 break
 

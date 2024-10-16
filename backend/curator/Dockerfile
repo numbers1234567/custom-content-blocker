@@ -41,7 +41,6 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 # Copy the source code into the container.
 COPY curator curator
-COPY models models
 RUN touch __init__.py
 COPY backend_shared backend_shared
 

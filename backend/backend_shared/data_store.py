@@ -8,6 +8,8 @@ from typing import List
 from functools import cache
 import threading
 
+from data_models_http import CurationMode
+
 @dataclass
 class SocialPostBaseMetaData:
     create_utc : int
@@ -160,11 +162,6 @@ class DataStorePost(DataStore):
             )
             for internal_id, post_id, text, embed_html, create_utc in result
         ]
-    
-@dataclass
-class CurationModeID:
-    name: str
-    key: str
 
 class UserData(DataStore):
     # Curate id must be synced
@@ -189,7 +186,7 @@ class UserData(DataStore):
             UserData.max_curate_id = max_id
     max_curate_id = 0
 
-    def __init__(self, postgres_db_url: str, email: str, create_utc: int=None, uid: int=None, curation_modes: List[CurationModeID]|None=None, verbose: bool = False):
+    def __init__(self, postgres_db_url: str, email: str, create_utc: int=None, uid: int=None, curation_modes: List[CurationMode]|None=None, verbose: bool = False):
         super().__init__(postgres_db_url, verbose=verbose)
 
         self.email: str = email
@@ -225,7 +222,7 @@ class UserData(DataStore):
                 """, (self.uid,))
 
                 curation_modes = cur.fetchall()
-                self.curation_modes = [CurationModeID(key=key, name=name) for key,name in curation_modes]
+                self.curation_modes = [CurationMode(key=key, name=name) for key,name in curation_modes]
 
             except TypeError as e:
                 self._log(f"Failed to retrieve data for {self}. Does the user exist in the database?",

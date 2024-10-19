@@ -26,11 +26,29 @@ from .env import *
 
 from .sessions import SessionManager, Session, SessionUser
 
+from backend_shared.data_store import DataStorePost, DataStoreUser
+
+###################
+#   DATA STORES   #
+###################
+
+_POSTGRES_DB_NAME = os.environ["CONTENT_CURATION_POSTGRES_DB_NAME"]
+_POSTGRES_DB_USER = os.environ["CONTENT_CURATION_POSTGRES_USER"]
+_POSTGRES_DB_PASS = os.environ["CONTENT_CURATION_POSTGRES_PASSWORD"]
+_POSTGRES_DB_HOST = os.environ["CONTENT_CURATION_POSTGRES_HOST"]
+_POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
+
+POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
+
+data_store_post = DataStorePost(POSTGRES_DB_URL, verbose=True)
+data_store_user = DataStoreUser(POSTGRES_DB_URL, verbose=True)
+
+
 ########################
 #   SESSION HANDLING   #
 ########################
 
-session_manager = SessionManager(default_sessions={"public" : Session()})
+session_manager = SessionManager(data_store_post, data_store_user, default_sessions={"public" : Session(data_store_post, data_store_user)})
 
 
 #################

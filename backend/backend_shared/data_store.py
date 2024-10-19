@@ -258,6 +258,16 @@ class UserData(DataStore):
                 UserData._set_max_curate_id(self.postgres_db_url)
                 self.create_curation_mode(name, _retries=_retries-1)
 
+    def delete_curation_mode(self, curate_key: str):
+        with self.create_db_connection() as conn:
+            cur = conn.cursor()
+
+            cur.execute("""
+                DELETE FROM curation_modes
+                WHERE curation_key=%s;
+            """, (curate_key,))
+            conn.commit()
+
     def __repr__(self):
         return f"User-{self.uid}:{self.email}"
 

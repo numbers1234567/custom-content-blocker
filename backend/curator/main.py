@@ -252,10 +252,6 @@ class BLIPHead(nn.Module):
     def forward(self, features):
         return self.mlp(features)
 
-politics_head = BLIPHead()
-politics_head.load_state_dict(torch.load("models/blip_deep_mlp_4_e5", map_location=torch.device("cpu")))
-politics_head.eval()
-
 def load_blip_head(curate_key : str) -> BLIPHead|None:
     params = get_blip_params(curate_key)
     if params is None:

@@ -1,36 +1,39 @@
 from typing import Dict
 import time
 
-import random
-import requests
-import json
+from typing import List
 
 from functools import cache
 
 from .env import *
-from .rpc import *
+from .rpc import CuratedPostBatch, CuratedPost, get_curate_score,CurationMode,Credentials,recommend_post
+
+from backend_shared.data_store import DataStorePost,DataStoreUser,UserData
 
 from .authenticator import Authenticator
 
 from threading import Lock
 
 class Session:
-    def __init__(self, timeout : int=1e12):
+    def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, timeout : int=1e12):
         self.create_time = time.time()
         self.last_action_time = self.create_time
         self.timeout = timeout
+
+        self.data_store_post: DataStorePost = data_store_post
+        self.data_store_user: DataStoreUser = data_store_user
         
     def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, max_score=0.5) -> CuratedPostBatch:
         self.last_action_time = time.time()
         curated_posts : list[CuratedPost] = []
 
-        social_posts = get_recent_posts(posts_before, count_max)
+        social_posts = self.data_store_post.get_recent_posts(posts_before, count=count_max)
 
         # Score each post
-        for post in social_posts.html_embeds:
-            html_embed = post.html
-            create_utc = post.create_utc
-            post_id = post.post_id
+        for post in social_posts:
+            html_embed = post.media_data.embed_html
+            create_utc = post.metadata.create_utc
+            post_id = post.metadata.post_id
 
             curation_scores = get_curate_score(post_id, curation_mode)
 
@@ -57,30 +60,24 @@ class Session:
     
 # An authenticated session
 class SessionUser(Session):
-    def __init__(self, email : str, timeout : int=60*60):
-        super().__init__(timeout)
+    def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, email : str, timeout : int=60*60):
+        super().__init__(data_store_post=data_store_post, data_store_user=data_store_user, timeout=timeout)
         self.email = email
         
-        user_data = get_user_data(email)
-        if user_data==None:
-            if not self.sign_up_user():
-                raise ValueError(f"Failed to create user {email}.")
-            user_data = get_user_data(email)
-        self.signup_time = user_data.create_utc
-        self.curate_modes = user_data.curate_modes
+        try:
+            self.user_data: UserData = self.data_store_user[email]
+
+        except ValueError:
+            self.user_data: UserData = self.data_store_user.create_user(email, return_user=True)
 
         self.curate_mode_limit = 10  # Current default
 
         self.timeout = timeout
-
-    def sign_up_user(self) -> bool:
-        success, status = sign_up_user_db_manager(self.email)
-        return success
     
     def create_curation_mode(self, mode_name : str) -> CurationMode | None:
         if len(self.curate_modes) >= 10:
             return None
-        curate_data = create_curation_mode(self.email, mode_name)
+        curate_data = self.user_data.create_curation_mode(mode_name)
 
         self._refresh()
 
@@ -89,7 +86,7 @@ class SessionUser(Session):
     def delete_curation_mode(self, curation_key : str):
         if curation_key not in [i.key for i in self.curate_modes]:
             return False
-        delete_curation_mode(curation_key)
+        self.user_data.delete_curation_mode(curation_key)
         
         self._refresh()
         return True
@@ -106,19 +103,20 @@ class SessionUser(Session):
         return True
     
     def _refresh(self):
-        user_data = get_user_data(self.email)
-        self.signup_time = user_data.create_utc
-        self.curate_modes = user_data.curate_modes
+        self.user_data.refresh()
 
         self.curate_mode_limit = 10  # Current default
 
 class SessionManager:
-    def __init__(self, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
+    def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, authenticator:Authenticator=Authenticator(), default_sessions:Dict[str, Session]={}):
         # identifier : Session
         self.session_registry_lock = Lock()
         self.sessions : Dict[str, Session] = default_sessions.copy()
         self.authenticator=authenticator
         self.max_sessions = 1000
+
+        self.data_store_post = data_store_post
+        self.data_store_user = data_store_user
 
     def login(self, credentials:Credentials):
         token = credentials.token
@@ -130,7 +128,7 @@ class SessionManager:
         except Exception as e:
             return False
 
-        self.register_session(token, SessionUser(user_data.email))
+        self.register_session(token, SessionUser(self.data_store_post, self.data_store_user, user_data.email))
         return True
 
     def register_session(self, identifier : str, session : Session):

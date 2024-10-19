@@ -8,7 +8,7 @@ from typing import List
 from functools import cache
 import threading
 
-from data_models_http import CurationMode
+from .data_models_http import CurationMode
 
 @dataclass
 class SocialPostBaseMetaData:

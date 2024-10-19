@@ -304,7 +304,7 @@ class DataStoreUser(DataStore):
                 conn.commit()
                 cur.close()
 
-                if return_user: return UserData(self.postgres_db_url, email, create_utc=create_time, uid=add_id, verbose=self._verbose)
+                if return_user: return UserData(self.postgres_db_url, email, create_utc=create_time, uid=add_id, curation_modes=[], verbose=self._verbose)
 
         except psycopg2.IntegrityError as e:  # This should catch the max id being desynced for some reason
             self._log(f"Failed to insert user {email} with id {add_id}. Retries left: {_retries}.",

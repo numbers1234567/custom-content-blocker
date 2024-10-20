@@ -28,19 +28,19 @@ class SocialPostBaseData:
 # Separate object to handle getting data from a specific post
 class PostGetter:
     def get_embed_html(self) -> list[str]:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
     def get_imgs_b64(self) -> list[str]:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
     def get_text(self) -> str:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
     def get_create_utc(self) -> int:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
     def get_post_id(self) -> str:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
 class SocialClient:
 
@@ -48,7 +48,7 @@ class SocialClient:
         pass
 
     def post_generator(self) -> Generator[PostGetter, None, None]:
-        pass
+        raise NotImplementedError(f"{self} has not implemented this method.")
 
     """
     Gets all posts that are currently trending on the social apps

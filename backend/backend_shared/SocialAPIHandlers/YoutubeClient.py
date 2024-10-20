@@ -7,8 +7,24 @@ import base64
 from datetime import datetime
 
 class YoutubePostGetter(PostGetter):
-    def __init__(self, post_data, verbose=True):
+    def __init__(self, post_id: str|None=None, post_data: dict|None=None, verbose=True):
+        assert post_id or post_data
+        
+        if not post_id:  # post_id should be in the form "Youtube: [youtube-video-id]". post_data should be set
+            post_id = "Youtube: " + post_data["id"]
+        elif not post_data:  # post_data is not set, but we can get it from the post_id and youtube's API
+            y_id = self.post_id.replace("Youtube:", "").strip()
+            url = f"https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics%2Cplayer&chart=mostPopular&id={y_id}&key={self.yt_data_key}"
+            response = requests.get(
+                url,
+                headers={"Accept": "application/json"}
+            )
+            response = json.loads(response.content)
+
+            post_data = response["items"][0]
+
         self.post_data = post_data
+        self.post_id = post_id
 
     def get_embed_html(self) -> str:
         return self.post_data["player"]["embedHtml"]
@@ -62,7 +78,7 @@ class YoutubeClient(SocialClient):
                 try:
                     if time.time() - last_req <= 2:
                         time.sleep(2 - (time.time() - last_req))
-                    yield YoutubePostGetter(video)
+                    yield YoutubePostGetter(post_data=video)
                     last_req = time.time()
                     total_yield += 1
                 except Exception as e:

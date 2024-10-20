@@ -18,8 +18,7 @@ class QuickstartUser(HttpUser):
     wait_time = between(1, 3)
 
     def on_start(self):
-        self.email : str = random.choice(user_emails)
-        self.credentials : Dict[str,str] = {"token" : self.email, "email" : self.email}
+        self.credentials : Dict[str,str] = {"token" : "public", "email" : "public"}
         self.client.post(f"/login", json={"credentials": self.credentials})
 
     @task

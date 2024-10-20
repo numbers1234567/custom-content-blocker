@@ -15,9 +15,9 @@ from fastapi import FastAPI,HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 # Social Media Handlers
-from .SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
-from .SocialAPIHandlers.RedditClient import RedditClient
-from .SocialAPIHandlers.YoutubeClient import YoutubeClient
+from backend_shared.SocialAPIHandlers.SocialClient import SocialClient, SocialPostBaseData
+from backend_shared.SocialAPIHandlers.RedditClient import RedditClient
+from backend_shared.SocialAPIHandlers.YoutubeClient import YoutubeClient
 
 # third-party services
 from huggingface_hub import get_inference_endpoint
@@ -41,6 +41,7 @@ from collections.abc import Iterable
 import time
 
 from backend_shared.data_models_http import *
+from backend_shared.data_store import DataStorePost
 import random
 
 import numpy as np
@@ -58,6 +59,8 @@ _POSTGRES_DB_HOST = os.environ["CONTENT_CURATION_POSTGRES_HOST"]
 _POSTGRES_DB_PORT = os.environ["CONTENT_CURATION_POSTGRES_PORT"]
 
 POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRES_DB_HOST}:{_POSTGRES_DB_PORT}/{_POSTGRES_DB_NAME}'
+
+data_store_post = DataStorePost(POSTGRES_DB_URL, verbose=True)
 
 # Social Media APIs
 reddit_api_access = True
@@ -181,28 +184,7 @@ def check_post_exists_db(conn, post : SocialPostBaseData) -> bool:
     cur.close()
     return db_post != None
 
-def get_max_internal_id() -> int:
-    conn = psycopg2.connect(POSTGRES_DB_URL)
-    cur: psycopg2.cursor = conn.cursor()
-
-    cur.execute("""
-        SELECT MAX(internal_id)
-        FROM social_post_data;
-    """)
-
-    result = cur.fetchone()
-
-    max_id = result[0] if result[0]!=None else -1
-    
-    cur.close()
-    conn.close()
-
-    return max_id
-
-max_id_lock = threading.Lock()
-max_id = get_max_internal_id()
-def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
-    global max_id
+def insert_post_db(post : SocialPostBaseData) -> bool:
     # Try to connect
     try:
         conn = psycopg2.connect(POSTGRES_DB_URL)
@@ -218,16 +200,9 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
         return False
     
     try:
-        with max_id_lock:
-            if add_id == None: 
-                add_id = max_id+1
-
-
-            cur.execute("""
-                INSERT INTO social_post_data (internal_id, post_id, title, embed_html, create_utc) 
-                    VALUES (%s, %s, %s, %s, %s);
-            """, (add_id, post.metadata.post_id, post.media_data.text, post.media_data.embed_html, post.metadata.create_utc))
-            max_id += 1
+        post_data = data_store_post.insert_post(post.metadata.post_id, post.media_data.embed_html, post.media_data.text, post.metadata.create_utc, return_post=True)
+        if not post_data:
+            raise Exception(f"Failed to insert post {post.metadata.post_id}.")
 
         # Insert extra features here
 
@@ -239,7 +214,7 @@ def insert_post_db(post : SocialPostBaseData, add_id : int|None = None) -> bool:
             cur.execute("""
                 INSERT INTO blip_features (internal_id, features)
                     VALUES (%s, %s);
-            """, (add_id, features))
+            """, (post_data.internal_id, features))
         except Exception as e:
             print(f"[ERROR]: Failed to insert BLIP features for {post.metadata.post_id}!")
             print("   Error message " + str(e))

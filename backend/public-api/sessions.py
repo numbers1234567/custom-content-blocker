@@ -31,9 +31,9 @@ class Session:
 
         # Score each post
         for post in social_posts:
-            html_embed = post.media_data.embed_html
-            create_utc = post.metadata.create_utc
-            post_id = post.metadata.post_id
+            html_embed = post.embed_html
+            create_utc = post.create_utc
+            post_id = post.post_id
 
             curation_scores = get_curate_score(post_id, curation_mode)
 

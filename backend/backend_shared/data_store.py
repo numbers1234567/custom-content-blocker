@@ -8,23 +8,10 @@ from typing import List
 from functools import cache
 import threading
 
-from .data_models_http import CurationMode
-
-@dataclass
-class SocialPostBaseMetaData:
-    create_utc : int
-    # Unique internal post ID which can be used to find the source
-    post_id : str
-
-@dataclass
-class SocialPostBaseMediaData:
-    embed_html : str = ""
-    text : str = ""
-
-@dataclass
-class SocialPostBaseData:
-    metadata   : SocialPostBaseMetaData
-    media_data : SocialPostBaseMediaData
+try:
+    from .data_models_http import CurationMode
+except:
+    from data_models_http import CurationMode
 
 class DataStore:
     def __init__(self, postgres_db_url: str, verbose: bool=False):
@@ -39,6 +26,46 @@ class DataStore:
 
     def create_db_connection(self):  # No type annotation, but should return a psycopg2 connection
         return psycopg2.connect(self.postgres_db_url)
+    
+class PostData(DataStore):
+    def __init__(self, postgres_db_url: str, internal_id: int|None=None, post_id: str|None=None, embed_html: str|None=None, text: str|None=None, create_utc: int|None=None, verbose: bool=False):
+        assert internal_id or post_id
+        super().__init__(postgres_db_url, verbose=verbose)
+
+        self.internal_id: int = -1
+        self.post_id: str = ""
+        self.embed_html: str = ""
+        self.text: str = ""
+        self.create_utc: int = 0
+
+        if internal_id==None:
+            with self.create_db_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT internal_id
+                    FROM social_post_data
+                    WHERE post_id=%s;
+                """, (self.post_id,))
+                self.internal_id, = cur.fetchone()
+
+        if internal_id: self.internal_id = internal_id
+        if post_id: self.post_id = post_id
+        if embed_html: self.embed_html = embed_html
+        if text: self.text = text
+        if create_utc: self.create_utc = create_utc
+
+        if not post_id or not embed_html or not text or not create_utc:
+            with self.create_db_connection() as conn:
+                cur = conn.cursor()
+                cur.execute("""
+                    SELECT internal_id,post_id,title,embed_html,create_utc
+                    FROM social_post_data
+                    WHERE internal_id=%s;
+                """, (self.internal_id,))
+            _,self.post_id,self.text,self.embed_html,self.create_utc = cur.fetchone()
+
+    def __repr__(self):
+        return f"<PostData {self.post_id} - {self.internal_id}>"
 
 class DataStorePost(DataStore):
     def __init__(self, postgres_db_url, verbose=False):
@@ -107,7 +134,7 @@ class DataStorePost(DataStore):
                 self.insert_post(post_id, embed_html, text, create_utc, _retries=_retries-1)
 
 
-    def __getitem__(self, post_id: str) -> SocialPostBaseData:
+    def __getitem__(self, post_id: str) -> PostData:
         with self.create_db_connection() as conn:
             cur = conn.cursor()
 
@@ -124,18 +151,16 @@ class DataStorePost(DataStore):
             internal_id, post_id, text, embed_html, create_utc = result
             cur.close()
 
-            return SocialPostBaseData(
-                metadata=SocialPostBaseMetaData(
-                    create_utc=create_utc,
-                    post_id=post_id,
-                ),
-                media_data=SocialPostBaseMediaData(
-                    embed_html=embed_html,
-                    text=text,
-                ),
+            return PostData(
+                self.postgres_db_url,
+                internal_id=internal_id,
+                post_id=post_id,
+                embed_html=embed_html,
+                text=text,
+                create_utc=create_utc,
             )
     
-    def get_recent_posts(self, before: int, count: int=20) -> List[SocialPostBaseData]:
+    def get_recent_posts(self, before: int, count: int=20) -> List[PostData]:
         with self.create_db_connection() as conn:
             cur = conn.cursor()
             # New to SQL, so there might be a more performant way to do this.
@@ -150,15 +175,13 @@ class DataStorePost(DataStore):
             result = cur.fetchall()
         
         return [
-            SocialPostBaseData(
-                metadata=SocialPostBaseMetaData(
-                    create_utc=create_utc,
-                    post_id=post_id,
-                ),
-                media_data=SocialPostBaseMediaData(
-                    embed_html=embed_html,
-                    text=text,
-                ),
+            PostData(
+                self.postgres_db_url,
+                internal_id=internal_id,
+                post_id=post_id,
+                embed_html=embed_html,
+                text=text,
+                create_utc=create_utc,
             )
             for internal_id, post_id, text, embed_html, create_utc in result
         ]
@@ -225,9 +248,7 @@ class UserData(DataStore):
                 self.curation_modes = [CurationMode(key=key, name=name) for key,name in curation_modes]
 
             except TypeError as e:
-                self._log(f"Failed to retrieve data for {self}. Does the user exist in the database?",
-                          message=str(e))
-                
+                raise ValueError(f"Failed to retrieve data for {self}. Does the user exist in the database?")
 
             cur.close()
     
@@ -326,8 +347,8 @@ class DataStoreUser(DataStore):
         try:
             return UserData(self.postgres_db_url, email)
         except ValueError as e:
-            self._log(f"Failed to retrieve user {email}. Does the user exist in the database?",
-                      message=str(e))
+            raise ValueError(f"Failed to retrieve data for {self}. Does the user exist in the database?")
+
 
 if __name__=="__main__":
     import time

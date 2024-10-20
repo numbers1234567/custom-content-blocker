@@ -10,8 +10,15 @@ def clean_image_url(url : str) -> str:
     return url.replace("&amp;", "&")
 
 class RedditPostGetter(PostGetter):
-    def __init__(self, post, verbose=True):
-        self.verbose = verbose
+    def __init__(self, post_id: str|None=None, post: praw.reddit.Submission|None=None, reddit: praw.Reddit|None=None, verbose=True):
+        assert post or (post_id and reddit)
+
+        if not post: # post_id is the actual url 
+            post = praw.reddit.Submission(reddit, url=post_id)
+        elif not post_id:
+            post_id = 'https://www.reddit.com' + post.permalink
+
+        self.verbose: bool = verbose
         self.post = post
         self.permalink = post.permalink
 
@@ -99,7 +106,7 @@ class RedditClient(SocialClient):
     def post_generator(self, count:int=100) -> Generator[PostGetter, None, None]:
         for post in self.reddit.subreddit("popular").hot(limit=count):
             try:
-                yield RedditPostGetter(post)
+                yield RedditPostGetter(post=post)
             except Exception as e:
                 print(f"[ERROR]: Failed to retrieve post {post.permalink}!")
                 print("   Message: " + str(e))

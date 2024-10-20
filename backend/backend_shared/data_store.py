@@ -105,7 +105,7 @@ class DataStorePost(DataStore):
 
             return db_post != None
     
-    def insert_post(self, post_id: str, embed_html: str, text: str, create_utc: int, _retries: int = 100):
+    def insert_post(self, post_id: str, embed_html: str, text: str, create_utc: int, return_post: bool=False, _retries: int = 100) -> PostData|None:
         try:
             # This post "claims" add_id as its id
             with self.max_id_lock:
@@ -124,6 +124,7 @@ class DataStorePost(DataStore):
                 cur.close()
 
                 self._log(f"Successfully inserted post {post_id}")
+                if return_post: return PostData(self.postgres_db_url, add_id, post_id, embed_html, text, create_utc, verbose=self._verbose)
 
         except psycopg2.IntegrityError as e:  # This should catch the max id being desynced for some reason
             self._log(f"Failed to insert post {post_id} with internal id {add_id}. Retries left: {_retries}.",
@@ -131,8 +132,7 @@ class DataStorePost(DataStore):
             if _retries > 0:
                 self._set_max_id()
 
-                self.insert_post(post_id, embed_html, text, create_utc, _retries=_retries-1)
-
+                return self.insert_post(post_id, embed_html, text, create_utc, return_post=return_post, _retries=_retries-1)
 
     def __getitem__(self, post_id: str) -> PostData:
         with self.create_db_connection() as conn:

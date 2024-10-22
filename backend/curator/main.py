@@ -25,7 +25,7 @@ import time
 
 import random
 
-from backend_shared.data_models_http import *
+from backend.backend_shared.data_models import *
 
 # Data Processing
 import numpy as np

@@ -9,9 +9,9 @@ from functools import cache
 import threading
 
 try:
-    from .data_models_http import CurationMode
+    from .data_models import CurationMode
 except:
-    from data_models_http import CurationMode
+    from backend.backend_shared.data_models import CurationMode
 
 class DataStore:
     def __init__(self, postgres_db_url: str, verbose: bool=False):

@@ -38,6 +38,13 @@ CREATE TABLE blip_curation_heads (
     PRIMARY KEY (curation_id)
 );
 
+CREATE TABLE doc_freq (
+    post_id INT NOT NULL REFERENCES social_post_data(internal_id),
+    n_gram TEXT NOT NULL,
+    freq INT NOT NULL,
+    PRIMARY KEY (post_id, n_gram)
+);
+
 COPY social_post_data
 FROM '/docker-entrypoint-initdb.d/test_post_data.csv'
 DELIMITER E'\t'

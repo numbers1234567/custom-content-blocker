@@ -33,6 +33,8 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 import torch
 
+from background_ml import NGramFreqWorker
+
 # Database
 import psycopg2
 
@@ -55,73 +57,8 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 #   BACKGROUND PROCESS   #
 ##########################
 
-
-def create_formatted_str_array(arr : Iterable[any]) -> str:
-    return "{" + ",".join([str(i) for i in arr]) + "}"
-
-def create_blip_head(curate_id : int):
-    try: conn = psycopg2.connect(POSTGRES_DB_URL)
-    except: raise Exception("Failed to connect to DB")
-    # Initialize parameters
-    stdv1 = 1. / np.sqrt(768)
-    stdv2 = 1. / np.sqrt(10)
-
-    w1,b1 = np.random.rand(768, 10)*(2*stdv1) - stdv1, np.random.rand(10)*(2*stdv1) - stdv1
-    w2,b2 = np.random.rand(10, 2)*(2*stdv2) - stdv2, np.random.rand(2)*(2*stdv2) - stdv2
-    
-    # Biased initialization
-    b2 = np.log([0.9, 0.1])
-
-    # Insert
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            INSERT INTO blip_curation_heads (curation_id,weight1,weight2,bias1,bias2)
-            VALUES (%s, %s, %s, %s, %s);
-        """, (curate_id, 
-              create_formatted_str_array([create_formatted_str_array(row) for row in w1]), 
-              create_formatted_str_array([create_formatted_str_array(row) for row in w2]),
-              create_formatted_str_array(b1),
-              create_formatted_str_array(b2)))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"[ERROR]: Failed to insert BLIP head.")
-        print("   Message: " + str(e))
-        raise Exception("Failed to insert BLIP head")
-
-def _bg_populate_curate_modes():
-    last_iter = time.time()
-    while True:
-        try:
-            conn = psycopg2.connect(POSTGRES_DB_URL)
-            cur = conn.cursor()
-            cur.execute("""
-                SELECT curation_modes.curation_id
-                FROM curation_modes LEFT JOIN blip_curation_heads ON curation_modes.curation_id=blip_curation_heads.curation_id
-                WHERE create_utc >= %s AND weight1 IS NULL;
-            """, (last_iter,))
-            query_res = cur.fetchone()
-            while query_res != None:
-                c_id, = query_res
-                try:
-                    create_blip_head(curate_id=c_id)
-                except Exception as e:
-                    print(f"[ERROR]: Failed to create BLIP head for curate id {c_id}")
-                    print("   Message: " + str(e))
-
-                query_res = cur.fetchone()
-
-            cur.close()
-            conn.close()
-        except Exception as e:
-            print("[ERROR]: Unexpected exception")
-            print("   Message: " + str(e))
-        last_iter = time.time()
-        time.sleep(1)
-
-bg_worker_populate_mode = mp.Process(target=_bg_populate_curate_modes).start()
-
+NGramFreqWorker(POSTGRES_DB_URL)
+NGramFreqWorker.start()
 
 #################
 #   ENDPOINTS   #

@@ -43,7 +43,7 @@ class MLBackgroundProcessor:
 
         return mainloop
     
-class NGramFreqWorker(MLBackgroundProcessor):
+class NGramDFWorker(MLBackgroundProcessor):
     def __init__(self, postgres_db_url: str, period: float=2, verbose: bool=False):
         super().__init__(period=period, verbose=verbose)
         self.postgres_db_url = postgres_db_url
@@ -107,5 +107,5 @@ if __name__=="__main__":
     except ValueError:
         post: PostData = data_store_post["some post on reddit"]
         print("Post already exists")
-    freq_worker = NGramFreqWorker("postgres://postgres:1234@localhost:5432/postgres")
+    freq_worker = NGramDFWorker("postgres://postgres:1234@localhost:5432/postgres")
     freq_worker.insert_df_post(post.internal_id, "some post on reddit, this does not match the other one")

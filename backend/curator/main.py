@@ -33,7 +33,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 import torch
 
-from .background_ml import NGramFreqWorker
+from .background_ml import NGramDFWorker
 
 # Database
 import psycopg2
@@ -57,7 +57,7 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 #   BACKGROUND PROCESS   #
 ##########################
 
-n_gram_freq_worker = NGramFreqWorker(POSTGRES_DB_URL)
+n_gram_freq_worker = NGramDFWorker(POSTGRES_DB_URL)
 n_gram_freq_worker.start()
 
 #################

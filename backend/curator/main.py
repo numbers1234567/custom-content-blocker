@@ -25,7 +25,7 @@ import time
 
 import random
 
-from backend.backend_shared.data_models import *
+from backend_shared.data_models import *
 
 # Data Processing
 import numpy as np
@@ -33,7 +33,7 @@ from torch import nn
 from torch.nn import CrossEntropyLoss
 import torch
 
-from background_ml import NGramFreqWorker
+from .background_ml import NGramFreqWorker
 
 # Database
 import psycopg2
@@ -57,8 +57,8 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 #   BACKGROUND PROCESS   #
 ##########################
 
-NGramFreqWorker(POSTGRES_DB_URL)
-NGramFreqWorker.start()
+n_gram_freq_worker = NGramFreqWorker(POSTGRES_DB_URL)
+n_gram_freq_worker.start()
 
 #################
 #   ENDPOINTS   #

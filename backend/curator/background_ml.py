@@ -86,9 +86,9 @@ class NGramFreqWorker(MLBackgroundProcessor):
     def insert_df_post(self, post_id: int, text: str):
         for n_gram_n,vectorizer in enumerate(self.df_vectorizers, start=1):
             # A lot of overhead, but it works and matches the evaluation procedure
-            vectorized = vectorizer.fit_transform([post_id])
+            vectorized = vectorizer.fit_transform([text])
             for n_gram,freq in zip(vectorizer.get_feature_names_out(), vectorized.toarray()[0]):
-                self.insert_df(post_id, n_gram, n_gram_n, freq)
+                self.insert_df(post_id, n_gram, n_gram_n, int(freq))
 
     def update(self):
         target_posts = self.get_df_unprocessed_posts()
@@ -97,5 +97,15 @@ class NGramFreqWorker(MLBackgroundProcessor):
             self.insert_df_post(post_id, text)
 
 if __name__=="__main__":
+    import sys
+    sys.path.append("..")
+    from backend_shared.data_store import *
+
+    try:
+        data_store_post = DataStorePost("postgres://postgres:1234@localhost:5432/postgres")
+        post: PostData = data_store_post.insert_post("some post on reddit", "", "hello world!", 0, return_post=True)
+    except ValueError:
+        post: PostData = data_store_post["some post on reddit"]
+        print("Post already exists")
     freq_worker = NGramFreqWorker("postgres://postgres:1234@localhost:5432/postgres")
-    freq_worker.insert_df_post("some post on reddit", )
+    freq_worker.insert_df_post(post.internal_id, "some post on reddit, this does not match the other one")

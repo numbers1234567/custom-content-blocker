@@ -52,13 +52,13 @@ class NGramDFWorker(MLBackgroundProcessor):
             for i in range(1,7)
         ]
         
-    def insert_df(self, post_id: int, n_gram: str, n: int, freq: int):
+    def insert_df(self, internal_id: int, n_gram: str, n: int, freq: int):
         with psycopg2.connect(self.postgres_db_url) as conn:
             cur = conn.cursor()
             cur.execute("""
-                INSERT INTO doc_freq (post_id,n_gram,num_tokens,freq)
+                INSERT INTO doc_freq (internal_id,n_gram,num_tokens,freq)
                 VALUES (%s,%s,%s,%s);
-            """, (post_id, n_gram, n, freq))
+            """, (internal_id, n_gram, n, freq))
 
             conn.commit()
             cur.close()
@@ -83,18 +83,18 @@ class NGramDFWorker(MLBackgroundProcessor):
 
             return target_posts
         
-    def insert_df_post(self, post_id: int, text: str):
+    def insert_df_post(self, internal_id: int, text: str):
         for n_gram_n,vectorizer in enumerate(self.df_vectorizers, start=1):
             # A lot of overhead, but it works and matches the evaluation procedure
             vectorized = vectorizer.fit_transform([text])
             for n_gram,freq in zip(vectorizer.get_feature_names_out(), vectorized.toarray()[0]):
-                self.insert_df(post_id, n_gram, n_gram_n, int(freq))
+                self.insert_df(internal_id, n_gram, n_gram_n, int(freq))
 
     def update(self):
         target_posts = self.get_df_unprocessed_posts()
 
-        for post_id,text in target_posts:
-            self.insert_df_post(post_id, text)
+        for internal_id,text in target_posts:
+            self.insert_df_post(internal_id, text)
 
 if __name__=="__main__":
     import sys

@@ -5,7 +5,7 @@ import random
 import requests
 import json
 
-from backend.backend_shared.data_models import *
+from backend_shared.data_models import *
 
 from .env import *
 

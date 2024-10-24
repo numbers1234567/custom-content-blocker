@@ -21,7 +21,7 @@ from functools import cache
 
 import random
 
-from backend.backend_shared.data_models import *
+from backend_shared.data_models import *
 from .env import *
 
 from .sessions import SessionManager, Session, SessionUser

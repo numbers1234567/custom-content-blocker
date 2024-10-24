@@ -78,8 +78,8 @@ class NGramDFWorker(MLBackgroundProcessor):
                 LIMIT 100;
             """)
 
-            cur.close()
             target_posts: List[Tuple[int,str]] = list(cur.fetchall())
+            cur.close()
 
             return target_posts
         

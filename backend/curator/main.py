@@ -57,7 +57,7 @@ POSTGRES_DB_URL = f'postgres://{_POSTGRES_DB_USER}:{_POSTGRES_DB_PASS}@{_POSTGRE
 #   BACKGROUND PROCESS   #
 ##########################
 
-n_gram_freq_worker = NGramDFWorker(POSTGRES_DB_URL)
+n_gram_freq_worker = NGramDFWorker(POSTGRES_DB_URL, verbose=True)
 n_gram_freq_worker.start()
 
 #################

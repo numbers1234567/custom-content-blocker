@@ -39,11 +39,11 @@ CREATE TABLE blip_curation_heads (
 );
 
 CREATE TABLE doc_freq (
-    post_id INT NOT NULL REFERENCES social_post_data(internal_id),
+    internal_id INT NOT NULL REFERENCES social_post_data(internal_id),
     n_gram TEXT NOT NULL,
     num_tokens INT NOT NULL,
     freq INT NOT NULL,
-    PRIMARY KEY (post_id, n_gram)
+    PRIMARY KEY (internal_id, n_gram)
 );
 
 COPY social_post_data

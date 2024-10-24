@@ -11,7 +11,7 @@ import threading
 try:
     from .data_models import CurationMode
 except:
-    from backend.backend_shared.data_models import CurationMode
+    from data_models import CurationMode
 
 class DataStore:
     def __init__(self, postgres_db_url: str, verbose: bool=False):
@@ -105,7 +105,7 @@ class DataStorePost(DataStore):
 
             return db_post != None
     
-    def insert_post(self, post_id: str, embed_html: str, text: str, create_utc: int, return_post: bool=False, _retries: int = 100) -> PostData|None:
+    def insert_post(self, post_id: str, embed_html: str, text: str, create_utc: int, return_post: bool=False, _retries: int = 10) -> PostData|None:
         try:
             # This post "claims" add_id as its id
             with self.max_id_lock:
@@ -127,12 +127,17 @@ class DataStorePost(DataStore):
                 if return_post: return PostData(self.postgres_db_url, add_id, post_id, embed_html, text, create_utc, verbose=self._verbose)
 
         except psycopg2.IntegrityError as e:  # This should catch the max id being desynced for some reason
+            if post_id in self:
+                raise ValueError(f"{post_id} already exists in DB!")
             self._log(f"Failed to insert post {post_id} with internal id {add_id}. Retries left: {_retries}.",
                         message=str(e))
             if _retries > 0:
                 self._set_max_id()
 
                 return self.insert_post(post_id, embed_html, text, create_utc, return_post=return_post, _retries=_retries-1)
+            
+            else:
+                raise Exception(f"Failed to insert {post_id} in DB!")
 
     def __getitem__(self, post_id: str) -> PostData:
         with self.create_db_connection() as conn:
@@ -252,7 +257,7 @@ class UserData(DataStore):
 
             cur.close()
     
-    def create_curation_mode(self, name: str, _retries=100):
+    def create_curation_mode(self, name: str, _retries=10):
         create_utc = time.time()
         curation_key = "".join([random.choice(UserData.whitelist_key_characters) for _ in range(40)])
         
@@ -314,7 +319,7 @@ class DataStoreUser(DataStore):
             
             cur.close()
 
-    def create_user(self, email: str, return_user=False, _retries=100) -> UserData|None:
+    def create_user(self, email: str, return_user=False, _retries=10) -> UserData|None:
         create_time = time.time()
         with self.max_uid_lock:
             add_id = self.max_uid + 1

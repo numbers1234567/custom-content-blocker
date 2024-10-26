@@ -70,9 +70,9 @@ class NGramDFWorker(MLBackgroundProcessor):
             cur.execute("""
                 SELECT internal_id, title
                 FROM social_post_data
-                WHERE internal_id NOT IN (
-                    SELECT DISTINCT internal_id
-                    FROM doc_freq LIMIT 400
+                WHERE internal_id < ANY (
+                    SELECT MIN(internal_id)
+                    FROM doc_freq 
                 )
                 ORDER BY internal_id DESC
                 LIMIT 100;

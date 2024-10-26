@@ -84,9 +84,14 @@ class NGramDFWorker(MLBackgroundProcessor):
             return target_posts
         
     def insert_df_post(self, internal_id: int, text: str):
+        # Indicate the post was processed by this worker
+        self.insert_df(internal_id, "", 0, 0)
         for n_gram_n,vectorizer in enumerate(self.df_vectorizers, start=1):
             # A lot of overhead, but it works and matches the evaluation procedure
-            vectorized = vectorizer.fit_transform([text])
+            try:
+                vectorized = vectorizer.fit_transform([text])
+            except ValueError:  # Should handle "only has stop words" error
+                continue
             for n_gram,freq in zip(vectorizer.get_feature_names_out(), vectorized.toarray()[0]):
                 self.insert_df(internal_id, n_gram, n_gram_n, int(freq))
 

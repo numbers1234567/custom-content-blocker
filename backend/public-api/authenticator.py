@@ -1,4 +1,4 @@
-from backend_shared.data_models_http import Credentials
+from backend_shared.data_models import Credentials
 from .env import GOOGLE_CLIENT_ID
 from dataclasses import dataclass
 

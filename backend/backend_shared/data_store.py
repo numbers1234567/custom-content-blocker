@@ -110,7 +110,7 @@ class DataStorePost(DataStore):
             # This post "claims" add_id as its id
             with self.max_id_lock:
                 add_id = self.max_id + 1
-                self.max_id = max(add_id + 1, self.max_id)
+                self.max_id = add_id
 
             # Try to insert
             with self.create_db_connection() as conn:

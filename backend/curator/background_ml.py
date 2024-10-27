@@ -90,7 +90,7 @@ class NGramDFWorker(MLBackgroundProcessor):
                 ORDER BY internal_id ASC
                 LIMIT 100;
             """)
-            target_posts.append(list(cur.fetchall()))
+            target_posts += list(cur.fetchall())
             cur.close()
 
             return target_posts

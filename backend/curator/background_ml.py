@@ -67,6 +67,7 @@ class NGramDFWorker(MLBackgroundProcessor):
         with psycopg2.connect(self.postgres_db_url) as conn:
             cur = conn.cursor()
 
+            # DB structure knowledge: post ids will always be created in order
             cur.execute("""
                 SELECT internal_id, title
                 FROM social_post_data
@@ -79,6 +80,17 @@ class NGramDFWorker(MLBackgroundProcessor):
             """)
 
             target_posts: List[Tuple[int,str]] = list(cur.fetchall())
+
+            cur.execute("""
+                SELECT internal_id, title
+                FROM social_post_data
+                WHERE internal_id > ANY (
+                    SELECT MAX(internal_id) FROM doc_freq
+                )
+                ORDER BY internal_id ASC
+                LIMIT 100;
+            """)
+            target_posts.append(list(cur.fetchall()))
             cur.close()
 
             return target_posts

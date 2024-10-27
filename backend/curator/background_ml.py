@@ -67,6 +67,7 @@ class NGramDFWorker(MLBackgroundProcessor):
         with psycopg2.connect(self.postgres_db_url) as conn:
             cur = conn.cursor()
 
+            # DB structure knowledge: post ids will always be created in order
             cur.execute("""
                 SELECT internal_id, title
                 FROM social_post_data

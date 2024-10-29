@@ -46,6 +46,22 @@ CREATE TABLE doc_freq (
     PRIMARY KEY (internal_id, n_gram)
 );
 
+CREATE TABLE emerging_topic (
+    topic_id INT NOT NULL,
+    topic_name TEXT NOT NULL,
+    topic_key VARCHAR(40) NOT NULL UNIQUE,
+    create_utc INT,
+    date_start INT,
+    date_end INT,
+    PRIMARY KEY (topic_id)
+);
+
+CREATE TABLE emerging_topic_ngram (
+    topic_id INT NOT NULL REFERENCES emerging_topic(topic_id) ON DELETE CASCADE,
+    ngram TEXT NOT NULL,
+    PRIMARY KEY (topic_id, ngram)
+);
+
 COPY social_post_data
 FROM '/docker-entrypoint-initdb.d/test_post_data.csv'
 DELIMITER E'\t'

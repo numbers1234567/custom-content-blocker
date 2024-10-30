@@ -1,13 +1,73 @@
 # Custom Content Blocker
 
-Social media sites will often give us content that we don't want to consume. If a user is just on the website to look at cute cat pictures, they probably don't want to hear about some nonsense Tik-Tok ragebait. This is exacerbated by the fact that we can easily be drawn into content which makes us sad or angry, encouraging the company's algorithm to continue feeding us content we don't like. This project intends to give users greater control over the content they see. 
+A website which gives users options to control their social media feed.
 
-When a user enters a social media site and the content blocker extension is active, they can navigate the social media site like normal. However, if there is a post on the site which is similar to manually blocked content, the extension will blur the post. A user can manually block posts, which will automatically update their blocking preferences
+## Environment Setup
 
-Currently, this only blocks political content. The following video shows how the application automatically hid a political post. 
+Before doing anything, if you're on Windows, you may want to disable automatic conversion of line endings in your git config.
 
-![Alt Text](example.gif)
+Clone the repo:
 
-In this example video, four (!) posts are blocked in a row. Notice the false positive. This is because there are much more nonpolitical posts than political posts, so a false positive is inevitable. It's an anomaly that there were so many political posts in one area.
+    git clone https://github.com/numbers1234567/custom-content-blocker.git
 
-Notice that BLIP takes both image and text as input, but I modified it so it can handle text alone.
+Then (optionally) switch to the development branch with
+
+    git checkout staging
+
+### Backend
+
+For the curator, postgres-db-manager, and public-api, I have a local.env which defines environment variables in each directory.
+
+curator
+
+    CONTENT_CURATION_POSTGRES_DB_NAME=postgres
+    CONTENT_CURATION_POSTGRES_HOST=host.docker.internal
+    CONTENT_CURATION_POSTGRES_PASSWORD=1234
+    CONTENT_CURATION_POSTGRES_PORT=5432
+    CONTENT_CURATION_POSTGRES_USER=postgres
+
+postgres-db-manager
+
+    CONTENT_CURATION_POSTGRES_DB_NAME=postgres
+    CONTENT_CURATION_POSTGRES_HOST=host.docker.internal
+    CONTENT_CURATION_POSTGRES_PASSWORD=1234
+    CONTENT_CURATION_POSTGRES_PORT=5432
+    CONTENT_CURATION_POSTGRES_USER=postgres
+
+public-api
+
+    CONTENT_CURATION_POST_DB_MANAGER = http://host.docker.internal:8000
+    CONTENT_CURATION_CURATOR = http://host.docker.internal:8002
+    CONTENT_CURATION_GOOGLE_CLIENT_ID = 194668652482-o3cimds7musrstnde6oi1avbc51p7sqk.apps.googleusercontent.com
+
+Make sure Docker is installed on your system. I use Docker Desktop as I am new to it.
+
+To run the backend,
+
+    cd backend
+    docker compose up --build
+
+You may need to run this twice before it works.
+
+(Optional) install psql to directly interact with your local DB with
+
+    psql -U postgres
+
+and enter 1234 as the password
+
+### Frontend
+
+Install Node if you haven't already.
+
+Environment variables are stored in a .env.local file:
+
+    NEXT_PUBLIC_CURATE_API_URL=http://localhost:8001
+    NEXT_PUBLIC_GOOGLE_CLIENT_APP_ID=194668652482-o3cimds7musrstnde6oi1avbc51p7sqk
+
+Now you can run the frontend with
+
+    cd user-view
+    pnpm install
+    npm run dev
+
+pnpm install is only necessary on the first run or if a new package is added.

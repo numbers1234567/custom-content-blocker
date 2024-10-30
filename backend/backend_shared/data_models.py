@@ -127,3 +127,10 @@ class GetCurationModesRequestBody(BaseModel):
 
 class GetCurationModesResponseBody(BaseModel):
     curation_modes : list[CurationMode]
+
+class EmergingTopic(BaseModel):
+    topic_name : str
+    topic_key : str
+
+class GetEmergingTopicsResponseBody(BaseModel):
+    topics : List[EmergingTopic]

@@ -208,8 +208,19 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
         result = head(features).cpu().detach().numpy()[0]
     return result[1]/(result[0]+result[1])
 
-def restricted_ngram(topic : CurationMode):
-    pass
+@cache
+def get_restricted_ngram(topic : CurationMode) -> List[str]:
+    with psycopg2.connect(POSTGRES_DB_URL) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT ngram
+            FROM emerging_topic NATURAL JOIN emerging_topic_ngram
+            WHERE topic_key=%s;
+        """, (topic.key,))
+
+        result = cur.fetchall()
+        cur.close()
+        return [ngram for ngram, in result]
 
 def get_ensembled_curate_score(post_id : str, curation_setting : CurationSetting):
     def blip_worker(post_id : str, curate_key : str, result_buf: List[float], result_idx: int):

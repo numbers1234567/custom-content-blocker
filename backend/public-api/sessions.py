@@ -16,6 +16,10 @@ from .authenticator import Authenticator
 from threading import Lock,Thread
 
 class Session:
+    current_emerging_topics: List[EmergingTopic] = []
+    emerging_topics_lock: Lock = Lock()
+    update_period: int = 24*60*60
+    last_update_time: int = 0
     def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, timeout : int=1e12):
         self.create_time = time.time()
         self.last_action_time = self.create_time
@@ -58,8 +62,13 @@ class Session:
     def expired(self) -> bool:
         return time.time()-self.last_action_time > self.timeout
     
-    def get_emerging_topics(self) -> List[EmergingTopic]:
-        return []
+    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[EmergingTopic]:
+        if time.time() - Session.last_update_time > Session.update_period:
+            with Session.emerging_topics_lock:
+                Session.current_emerging_topics = get_emerging_topics(from_time, to_time)
+                Session.last_update_time = int(time.time())
+        
+        return Session.current_emerging_topics
     
     
 # An authenticated session

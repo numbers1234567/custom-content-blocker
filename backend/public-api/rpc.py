@@ -74,7 +74,7 @@ def delete_curation_mode(curation_key : str) -> DeleteCurationModeResponseBody:
 
     return DeleteCurationModeResponseBody.model_validate(json.loads(response.content))
 
-def get_emerging_topics(from_time: int, to_time: int|None) -> List[EmergingTopic]:
+def get_emerging_topics(from_time: int, to_time: int|None) -> List[CurationMode]:
     if to_time==None:
         to_time = int(time.time())
     
@@ -82,7 +82,7 @@ def get_emerging_topics(from_time: int, to_time: int|None) -> List[EmergingTopic
 
     response = requests.get(uri)
 
-    return EmergingTopicList.model_validate(json.loads(response.content)).topics
+    return [CurationMode.model_validate(topic) for topic in json.loads(response.content)]
 
 def recommend_post(post_id : str, curate_key : str, positive : bool) -> RecommendPostResponseBody:
     response = requests.post(f"{CURATOR}/recommend_post",

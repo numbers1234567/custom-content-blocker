@@ -112,29 +112,6 @@ def get_blip_params(curate_key : str) -> Union[Tuple[LinearLayer, LinearLayer],N
     weight2 = np.transpose(weight2, (1,0))
     return ((weight1, bias1), (weight2, bias2))
 
-def update_blip_params(curate_key : str, params : BLIPParams):
-    try:
-        conn = psycopg2.connect(POSTGRES_DB_URL)
-    except:
-        raise Exception("Failed to connect to database.")
-    
-    cur = conn.cursor()
-    cur.execute("""
-        UPDATE blip_curation_heads
-        SET weight1=%s,weight2=%s,bias1=%s,bias2=%s
-        WHERE curation_id in (
-            SELECT curation_id FROM curation_modes WHERE curation_key=%s
-        );
-    """, (create_formatted_str_array([create_formatted_str_array(row) for row in params.weight1]), 
-        create_formatted_str_array([create_formatted_str_array(row) for row in params.weight2]),
-        create_formatted_str_array(params.bias1),
-        create_formatted_str_array(params.bias2),
-        curate_key)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-
 @cache
 def get_post_blip_features(post_id : str) -> Union[np.array,None]:
     try:
@@ -189,6 +166,7 @@ class BLIPHead(nn.Module):
     def forward(self, features):
         return self.mlp(features)
 
+@cache
 def load_blip_head(curate_key : str) -> BLIPHead|None:
     params = get_blip_params(curate_key)
     if params is None:
@@ -206,6 +184,7 @@ def load_blip_head(curate_key : str) -> BLIPHead|None:
 
     return head
 
+@cache
 def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
     if curate_key=="half":
         return random.random()
@@ -229,10 +208,29 @@ def get_blip_curate_score(post_id : str, curate_key : str) -> float|None:
         result = head(features).cpu().detach().numpy()[0]
     return result[1]/(result[0]+result[1])
 
-@app.get("/get_curate_score")
-async def get_curate_score(post_id : str, curate_key : str) -> float:
-    blip_score = get_blip_curate_score(post_id, curate_key)
-    return blip_score if blip_score else 0
+def restricted_ngram(topic : CurationMode):
+    pass
+
+def get_ensembled_curate_score(post_id : str, curation_setting : CurationSetting):
+    def blip_worker(post_id : str, curate_key : str, result_buf: List[float], result_idx: int):
+        score = get_blip_curate_score(post_id,curate_key)
+        score: float = score if score else 0
+
+        result_buf[result_idx] = score
+
+    def ngram_worker(post_id : str, filters : List[CurationMode]):
+        pass
+
+
+
+@app.post("/get_curate_score")
+async def get_curate_score(request : GetCurateScoreRequestBody) -> float:
+    if request.post_id==None and request.post_ids==None:
+        raise HTTPException(status_code=400, detail="Provide either a post_id or a list of post_ids")
+    
+    post_ids : List[str] = request.post_ids if request.post_ids != None else [request.post_id]
+
+    
 
 def update_blip_head(curate_key : str, post_id : str, positive : bool):
     head = load_blip_head(curate_key)
@@ -282,10 +280,8 @@ async def emerging_topics(from_time: int, to_time: int|None):
             WHERE create_utc >= %s AND create_utc < %s;
         """, (from_time, to_time))
         result = cur.fetchall()
-        return EmergingTopicList(
-            topics=[EmergingTopic(topic_name=name,topic_key=key) 
+        return [CurationMode(name=name,key=key) 
                     for name,key in result]
-        )
 
 @app.post("/recommend_post")
 async def recommend_post(request : RecommendPostRequestBody) -> RecommendPostResponseBody:

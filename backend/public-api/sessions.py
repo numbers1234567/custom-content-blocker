@@ -8,7 +8,7 @@ from functools import cache
 from .env import *
 from .rpc import CuratedPostBatch, CuratedPost, get_curate_score,CurationMode,Credentials,recommend_post,get_emerging_topics
 
-from backend_shared.data_models import EmergingTopic,EmergingTopicList
+from backend_shared.data_models import CurationMode
 from backend_shared.data_store import DataStorePost,DataStoreUser,UserData
 
 from .authenticator import Authenticator
@@ -16,7 +16,7 @@ from .authenticator import Authenticator
 from threading import Lock,Thread
 
 class Session:
-    current_emerging_topics: List[EmergingTopic] = []
+    current_emerging_topics: List[CurationMode] = []
     emerging_topics_lock: Lock = Lock()
     update_period: int = 24*60*60
     last_update_time: int = 0
@@ -62,7 +62,7 @@ class Session:
     def expired(self) -> bool:
         return time.time()-self.last_action_time > self.timeout
     
-    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[EmergingTopic]:
+    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[CurationMode]:
         if time.time() - Session.last_update_time > Session.update_period:
             with Session.emerging_topics_lock:
                 Session.current_emerging_topics = get_emerging_topics(from_time, to_time)
@@ -73,7 +73,7 @@ class Session:
     
 # An authenticated session
 class SessionUser(Session):
-    current_emerging_topics: List[EmergingTopic] = []
+    current_emerging_topics: List[CurationMode] = []
     emerging_topics_lock: Lock = Lock()
     update_period: int = 24*60*60
     last_update_time: int = 0
@@ -120,7 +120,7 @@ class SessionUser(Session):
 
         return True
     
-    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[EmergingTopic]:
+    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[CurationMode]:
         if time.time() - SessionUser.last_update_time > SessionUser.update_period:
             with SessionUser.emerging_topics_lock:
                 SessionUser.current_emerging_topics = get_emerging_topics(from_time, to_time)

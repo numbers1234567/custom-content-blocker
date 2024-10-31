@@ -178,9 +178,7 @@ export async function getFilters(credentials : Credentials) : Promise<CurationMo
     })
     .then(response => response.json())
     .then(json => { 
-      result = json.emerging_topics.map(
-        (x : {topic_name: string, topic_key: string})=>{return {key: x.topic_key, name: x.topic_name}}
-      );
+      result = json.emerging_topics;
     })
     .catch(error => console.log(error));
   

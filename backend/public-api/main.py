@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 # utility
 import os
+import time
 
 from pydantic import BaseModel
 from typing import Dict, Union
@@ -195,11 +196,12 @@ async def get_curation_modes(request : GetCurationModesRequestBody) -> GetCurati
     session = session_manager[token]
     
     try:
-        result = session.get_usable_curate_modes()
+        curation_modes = session.get_usable_curate_modes()
+        emerging_topics = session.get_emerging_topics(int(time.time()-4*7*24*60*60))
 
     except Exception as e:
         print("[ERROR]: Failed to recommend post")
         print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to recommend post.")
     
-    return GetCurationModesResponseBody(curation_modes=result)
+    return GetCurationModesResponseBody(curation_modes=curation_modes, emerging_topics=emerging_topics)

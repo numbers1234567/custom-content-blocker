@@ -122,15 +122,16 @@ class LoginRequestBody(BaseModel):
 class LoginResponseBody(BaseModel):
     success : bool
 
-class GetCurationModesRequestBody(BaseModel):
-    credentials : Credentials
-
-class GetCurationModesResponseBody(BaseModel):
-    curation_modes : list[CurationMode]
-
 class EmergingTopic(BaseModel):
     topic_name : str
     topic_key : str
 
-class GetEmergingTopicsResponseBody(BaseModel):
+class EmergingTopicList(BaseModel):
     topics : List[EmergingTopic]
+
+class GetCurationModesRequestBody(BaseModel):
+    credentials : Credentials
+
+class GetCurationModesResponseBody(BaseModel):
+    curation_modes : List[CurationMode]
+    emerging_topics : List[EmergingTopic]

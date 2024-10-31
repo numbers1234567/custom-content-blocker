@@ -273,9 +273,6 @@ def update_blip_head(curate_key : str, post_id : str, positive : bool):
 async def emerging_topics(from_time: int, to_time: int|None):
     if to_time==None:
         to_time = time.time()
-
-    if to_time - from_time > 4 * 7 * 24 * 60 * 60:
-        raise HTTPException(400, "Time range too high.")
     
     with psycopg2.connect(POSTGRES_DB_URL) as conn:
         cur = conn.cursor()
@@ -285,7 +282,7 @@ async def emerging_topics(from_time: int, to_time: int|None):
             WHERE create_utc >= %s AND create_utc < %s;
         """, (from_time, to_time))
         result = cur.fetchall()
-        return GetEmergingTopicsResponseBody(
+        return EmergingTopicList(
             topics=[EmergingTopic(topic_name=name,topic_key=key) 
                     for name,key in result]
         )

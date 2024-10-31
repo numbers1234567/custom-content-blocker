@@ -86,3 +86,13 @@ COPY blip_curation_heads
 FROM '/docker-entrypoint-initdb.d/test_blip_heads.csv'
 DELIMITER E'\t'
 CSV HEADER;
+
+COPY emerging_topic
+FROM '/docker-entrypoint-initdb.d/test_emerging_topics.csv'
+DELIMITER E'\t'
+CSV HEADER;
+
+COPY emerging_topic_ngram
+FROM '/docker-entrypoint-initdb.d/test_emerging_topic_ngram.csv'
+DELIMITER E'\t'
+CSV HEADER;

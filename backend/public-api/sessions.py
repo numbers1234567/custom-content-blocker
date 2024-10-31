@@ -6,13 +6,14 @@ from typing import List
 from functools import cache
 
 from .env import *
-from .rpc import CuratedPostBatch, CuratedPost, get_curate_score,CurationMode,Credentials,recommend_post
+from .rpc import CuratedPostBatch, CuratedPost, get_curate_score,CurationMode,Credentials,recommend_post,get_emerging_topics
 
+from backend_shared.data_models import EmergingTopic,EmergingTopicList
 from backend_shared.data_store import DataStorePost,DataStoreUser,UserData
 
 from .authenticator import Authenticator
 
-from threading import Lock
+from threading import Lock,Thread
 
 class Session:
     def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, timeout : int=1e12):
@@ -57,9 +58,16 @@ class Session:
     def expired(self) -> bool:
         return time.time()-self.last_action_time > self.timeout
     
+    def get_emerging_topics(self) -> List[EmergingTopic]:
+        return []
+    
     
 # An authenticated session
 class SessionUser(Session):
+    current_emerging_topics: List[EmergingTopic] = []
+    emerging_topics_lock: Lock = Lock()
+    update_period: int = 24*60*60
+    last_update_time: int = 0
     def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, email : str, timeout : int=60*60):
         super().__init__(data_store_post=data_store_post, data_store_user=data_store_user, timeout=timeout)
         self.email = email
@@ -71,6 +79,7 @@ class SessionUser(Session):
             self.user_data: UserData = self.data_store_user.create_user(email, return_user=True)
 
         self.curate_mode_limit = 10  # Current default
+        self.curate_modes: List[CurationMode] = []
 
         self.timeout = timeout
     
@@ -101,6 +110,14 @@ class SessionUser(Session):
         recommend_post(post_id, curate_key, positive)
 
         return True
+    
+    def get_emerging_topics(self, from_time: int, to_time: int|None=None) -> List[EmergingTopic]:
+        if time.time() - SessionUser.last_update_time > SessionUser.update_period:
+            with SessionUser.emerging_topics_lock:
+                SessionUser.current_emerging_topics = get_emerging_topics(from_time, to_time)
+                SessionUser.last_update_time = int(time.time())
+        
+        return SessionUser.current_emerging_topics
     
     def _refresh(self):
         self.user_data.refresh()

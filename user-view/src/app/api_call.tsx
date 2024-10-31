@@ -163,10 +163,28 @@ export async function getUserCurationModes(credentials : Credentials) : Promise<
   return result;
 }
   
-export async function getFilters() : Promise<CurationMode[]> {
-  return [
-    {key : "trump_shooting", name : "Trump Shooting"}
-  ]
+export async function getFilters(credentials : Credentials) : Promise<CurationMode[]> {
+  const httpCredentials = toHTTPCredentials(credentials);
+  const requestBody : GetCurationModesRequestBody = {
+    credentials : httpCredentials,
+  }
+  let result : CurationMode[] = [];
+  await fetch(`${CURATE_API_PATH}/get_curation_modes`,
+    {method: "POST",
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    })
+    .then(response => response.json())
+    .then(json => { 
+      result = json.emerging_topics.map(
+        (x : {topic_name: string, topic_key: string})=>{return {key: x.topic_key, name: x.topic_name}}
+      );
+    })
+    .catch(error => console.log(error));
+  
+  return result;
 }
 
 export async function getSocialAppFilters() : Promise<CurationMode[]> {

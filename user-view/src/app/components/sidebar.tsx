@@ -22,9 +22,10 @@ export function Sidebar({
   useEffect(()=>{
     getUserCurationModes(credentials).then((curationModes)=>setAvailableCurationModes(curationModes));
     getSocialAppFilters().then((socialSites)=>setAvailableSocialSites(socialSites));
-    getFilters().then((filter)=>setAvailableFilters(filter));
+    getFilters(credentials).then((filter)=>setAvailableFilters(filter));
   }, [credentials])
 
+  console.log(curationSettings);
 
   /****************
    *   CONTROLS   *
@@ -35,6 +36,16 @@ export function Sidebar({
     newSettings.curationMode = newMode;
     setCurationSettings(newSettings);
   }
+  function blacklistTopic(topic : CurationMode) {
+    const newFilter : CurationMode[] = [...curationSettings.trendingFilters];
+    newFilter.push(topic);
+    setCurationSettings({curationMode : curationSettings.curationMode, socialMediaWhitelist : curationSettings.socialMediaWhitelist, trendingFilters : newFilter});
+  }
+  function unblacklistTopic(topic : CurationMode) {
+    const newFilter : CurationMode[] = curationSettings.trendingFilters.filter((item)=>item.key != topic.key);
+    setCurationSettings({curationMode : curationSettings.curationMode, socialMediaWhitelist : curationSettings.socialMediaWhitelist, trendingFilters : newFilter});
+  }
+  console.log()
   function whitelistSite(site : CurationMode) {
     const newSettings = cloneCurationSetting(curationSettings);
     newSettings.socialMediaWhitelist.push(site);
@@ -95,37 +106,18 @@ export function Sidebar({
         +
       </button>
     </div>}
-    {/*<div className="w-full h-6">
-      <p className="inline-block m-2">+</p>
-      <p className="inline-block m-2">Create New</p>
-    </div>
-    <p className="mt-8">Whitelisted Sites</p>
-    {/*availableSocialSites.map((val)=>{
-      // WHITELIST SITES
-      const isWhitelisted = curationSettings.socialMediaWhitelist
-        .map((v)=>v.key)
-        .indexOf(val.key) 
-         >= 0;
-      return <div className="w-full h-6" key={val.key}>
-        {isWhitelisted  && <input type="checkbox" className="inline-block m-2" checked 
-          onChange={(e)=>unWhitelistSite(val)}/>}
-        {!isWhitelisted && <input type="checkbox" className="inline-block m-2" 
-          onChange={(e)=>whitelistSite(val)}/>}
-        <p className="inline-block m-2">{val.name}</p>
-      </div>
-    })
     <p className="mt-8">Blacklisted Topics</p>
-    {/*availableFilters.map((val)=>{
+    {availableFilters.map((val)=>{
       // BLACKLIST TRENDING TOPICS
       const isBlacklisted = curationSettings.trendingFilters
         .map((v)=>v.key)
         .indexOf(val.key)
          >= 0;
-      return <div className="w-full h-6 p-2" key={val.key}>
-        {isBlacklisted  && <input type="checkbox" className="inline-block m-2" defaultChecked/>}
-        {!isBlacklisted && <input type="checkbox" className="inline-block m-2"/>}
-        <p className="inline-block m-2">{val.name}</p>
+      return <div className="w-full flex p-2" key={val.key}>
+        {isBlacklisted  && <input type="checkbox" className="inline-block m-2" defaultChecked onClick={()=>unblacklistTopic(val)}/>}
+        {!isBlacklisted && <input type="checkbox" className="inline-block m-2" onClick={()=>blacklistTopic(val)}/>}
+        <p className="inline-block float-right">{val.name}</p>
       </div>
-    })*/}
+    })}
   </div>;
 }

@@ -4,7 +4,9 @@ A website which gives users options to control their social media feed.
 
 ## Environment Setup
 
-Before doing anything, if you're on Windows, you may want to disable automatic conversion of line endings in your git config.
+Before doing anything, if you're on Windows, you may want to disable automatic conversion of line endings in your git config:
+
+    git config --global core.autocrlf false
 
 Clone the repo:
 
@@ -16,17 +18,9 @@ Then (optionally) switch to the development branch with
 
 ### Backend
 
-For the curator, postgres-db-manager, and public-api, I have a local.env which defines environment variables in each directory.
+For the *curator*, *postgres-db-manager*, and *public-api*, I have a *local.env* which defines environment variables in each directory.
 
-curator
-
-    CONTENT_CURATION_POSTGRES_DB_NAME=postgres
-    CONTENT_CURATION_POSTGRES_HOST=host.docker.internal
-    CONTENT_CURATION_POSTGRES_PASSWORD=1234
-    CONTENT_CURATION_POSTGRES_PORT=5432
-    CONTENT_CURATION_POSTGRES_USER=postgres
-
-postgres-db-manager
+#### curator
 
     CONTENT_CURATION_POSTGRES_DB_NAME=postgres
     CONTENT_CURATION_POSTGRES_HOST=host.docker.internal
@@ -34,7 +28,15 @@ postgres-db-manager
     CONTENT_CURATION_POSTGRES_PORT=5432
     CONTENT_CURATION_POSTGRES_USER=postgres
 
-public-api
+#### postgres-db-manager
+
+    CONTENT_CURATION_POSTGRES_DB_NAME=postgres
+    CONTENT_CURATION_POSTGRES_HOST=host.docker.internal
+    CONTENT_CURATION_POSTGRES_PASSWORD=1234
+    CONTENT_CURATION_POSTGRES_PORT=5432
+    CONTENT_CURATION_POSTGRES_USER=postgres
+
+#### public-api
 
     CONTENT_CURATION_POST_DB_MANAGER = http://host.docker.internal:8000
     CONTENT_CURATION_CURATOR = http://host.docker.internal:8002
@@ -70,4 +72,29 @@ Now you can run the frontend with
     pnpm install
     npm run dev
 
-pnpm install is only necessary on the first run or if a new package is added.
+*pnpm install* is only necessary on the first run or if a new package is added.
+
+
+### Testing
+
+For local testing, I recommend you use your preferred Python package manager such as Anaconda.
+
+#### Backend Unit Tests
+
+If you want to test a Python script *A*, there should be an associated *requirements.txt file*. Install with
+
+    pip install -r requirements.txt
+
+and run the file with
+
+    python A.py
+
+#### Load Tests
+
+This is stored in the *tests* directory.
+
+Run the load test UI with
+
+    cd tests
+    locust
+

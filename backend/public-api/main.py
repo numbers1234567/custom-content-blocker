@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 # utility
 import os
+import time
 
 from pydantic import BaseModel
 from typing import Dict, Union
@@ -75,10 +76,10 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
     # Unpack request
     token, \
     posts_before, count_max, count_min, \
-    max_score, curation_mode = \
+    max_score, curation_settings = \
         request.credentials.token,\
         request.options.before, request.options.count_max, request.options.count_min, \
-        request.options.max_score, request.curation_settings.curation_mode.key
+        request.options.max_score, request.curation_settings
     
     if token==None or token not in session_manager:
         raise HTTPException(status_code=401, detail="No session exists for the user.")
@@ -91,7 +92,7 @@ async def get_curated_posts(request : CuratePostsRequestBody) -> CuratedPostsRes
         raise HTTPException(status_code=400, detail="Invalid range. Constraint: count_min <= count_max")
     
     try:
-        curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_mode, count_max=count_max, count_min=count_min, max_score=max_score)
+        curated_posts : CuratedPostBatch = session_manager[token].get_curated_posts(posts_before, curation_settings, count_max=count_max, count_min=count_min, max_score=max_score)
     except Exception as e:
         print("[ERROR]: Failed to retrieve curated posts.")
         print("   Message: " + str(e))
@@ -195,11 +196,12 @@ async def get_curation_modes(request : GetCurationModesRequestBody) -> GetCurati
     session = session_manager[token]
     
     try:
-        result = session.get_usable_curate_modes()
+        curation_modes = session.get_usable_curate_modes()
+        emerging_topics = session.get_emerging_topics(int(time.time()-4*7*24*60*60))
 
     except Exception as e:
         print("[ERROR]: Failed to recommend post")
         print("   Message: " + str(e))
         raise HTTPException(status_code=500, detail="Failed to recommend post.")
     
-    return GetCurationModesResponseBody(curation_modes=result)
+    return GetCurationModesResponseBody(curation_modes=curation_modes, emerging_topics=emerging_topics)

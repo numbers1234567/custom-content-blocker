@@ -21,19 +21,33 @@ def get_recent_posts(before : int, count : int=20) -> GetRecentPostsResponseBody
 def url_encode(arg : str):
     return arg.replace(":", "%3A").replace("/", "%2F")
 
-def get_curate_score(post_id : str, curation_key : str) -> float:
-    if curation_key=="half":
-        return random.random()
-    if curation_key=="all":
-        return 0
+def get_curate_score(post_id : str, curation_settings : CurationSetting) -> float:
     try:
-        response = requests.get(f"{CURATOR}/get_curate_score?post_id={url_encode(post_id)}&curate_key={curation_key}")
+        response = requests.post(f"{CURATOR}/get_curate_score",
+            json={
+                "curation_settings" : {
+                    "curation_mode" : {
+                        "key" : curation_settings.curation_mode.key,
+                        "name" : curation_settings.curation_mode.name
+                    },
+                    "social_media_whitelist" : [
+                        {"key" : i.key, "name" : i.name}
+                        for i in curation_settings.social_media_whitelist
+                    ],
+                    "trending_filters" : [
+                        {"key" : i.key, "name" : i.name}
+                        for i in curation_settings.trending_filters
+                    ]
+                },
+                "post_id" : post_id
+            }
+        )
     except Exception as e:
-        print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_key}")
+        print(f"[ERROR]: Failed to retrieve curate score for post_id {post_id} and curate_key {curation_settings.curation_mode.key}")
         print("   Error Message: " + str(e))
         return 0
     try:
-        result = float(response.content)
+        result = float(GetCurateScoreResponseBody.model_validate(json.loads(response.content)).scores[0].score)
     except Exception as e:
         print(f"[ERROR]: Could not convert response score to float.")
         print("   Error Message: " + str(e))
@@ -73,6 +87,16 @@ def delete_curation_mode(curation_key : str) -> DeleteCurationModeResponseBody:
     )
 
     return DeleteCurationModeResponseBody.model_validate(json.loads(response.content))
+
+def get_emerging_topics(from_time: int, to_time: int|None) -> List[CurationMode]:
+    if to_time==None:
+        to_time = int(time.time())
+    
+    uri = f"{CURATOR}/emerging_topics?from_time={from_time}&to_time={to_time}" if to_time!=None else f"{CURATOR}/emerging_topics?from_time={from_time}"
+
+    response = requests.get(uri)
+
+    return [CurationMode.model_validate(topic) for topic in json.loads(response.content)]
 
 def recommend_post(post_id : str, curate_key : str, positive : bool) -> RecommendPostResponseBody:
     response = requests.post(f"{CURATOR}/recommend_post",

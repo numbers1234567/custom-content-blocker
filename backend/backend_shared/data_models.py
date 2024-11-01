@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List,Tuple
 
 class Credentials(BaseModel):
     token : str|None=None
@@ -126,11 +126,18 @@ class GetCurationModesRequestBody(BaseModel):
     credentials : Credentials
 
 class GetCurationModesResponseBody(BaseModel):
-    curation_modes : list[CurationMode]
+    curation_modes : List[CurationMode]
+    emerging_topics : List[CurationMode]
 
-class EmergingTopic(BaseModel):
-    topic_name : str
-    topic_key : str
+class GetCurateScoreRequestBody(BaseModel):
+    curation_settings : CurationSetting
+    post_id : str|None=None
+    post_ids : List[str]|None=None
 
-class GetEmergingTopicsResponseBody(BaseModel):
-    topics : List[EmergingTopic]
+class PostScore(BaseModel):
+    score : float
+    post_id : str
+    success : bool
+
+class GetCurateScoreResponseBody(BaseModel):
+    scores : List[PostScore]

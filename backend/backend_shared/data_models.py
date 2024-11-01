@@ -131,13 +131,13 @@ class GetCurationModesResponseBody(BaseModel):
 
 class GetCurateScoreRequestBody(BaseModel):
     curation_settings : CurationSetting
-    post_id : str|None
-    post_ids : List[str]|None
+    post_id : str|None=None
+    post_ids : List[str]|None=None
 
 class PostScore(BaseModel):
     score : float
     post_id : str
+    success : bool
 
 class GetCurateScoreResponseBody(BaseModel):
-    score : PostScore|None
-    scores : List[PostScore]|None
+    scores : List[PostScore]

@@ -8,7 +8,7 @@ from functools import cache
 from .env import *
 from .rpc import CuratedPostBatch, CuratedPost, get_curate_score,CurationMode,Credentials,recommend_post,get_emerging_topics
 
-from backend_shared.data_models import CurationMode
+from backend_shared.data_models import CurationMode,CurationSetting
 from backend_shared.data_store import DataStorePost,DataStoreUser,UserData
 
 from .authenticator import Authenticator
@@ -28,7 +28,7 @@ class Session:
         self.data_store_post: DataStorePost = data_store_post
         self.data_store_user: DataStoreUser = data_store_user
         
-    def get_curated_posts(self, posts_before, curation_mode, count_max=10, count_min=5, max_score=0.5) -> CuratedPostBatch:
+    def get_curated_posts(self, posts_before, curation_settings : CurationSetting, count_max=10, count_min=5, max_score=0.5) -> CuratedPostBatch:
         self.last_action_time = time.time()
         curated_posts : list[CuratedPost] = []
 
@@ -40,7 +40,7 @@ class Session:
             create_utc = post.create_utc
             post_id = post.post_id
 
-            curation_scores = get_curate_score(post_id, curation_mode)
+            curation_scores = get_curate_score(post_id, curation_settings)
 
             curated_posts.append(
                 CuratedPost(post_id=post_id, create_utc=create_utc, html=html_embed, curate_score=curation_scores)

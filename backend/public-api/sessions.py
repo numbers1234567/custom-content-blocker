@@ -18,7 +18,7 @@ from threading import Lock,Thread
 class Session:
     current_emerging_topics: List[CurationMode] = []
     emerging_topics_lock: Lock = Lock()
-    update_period: int = 24*60*60
+    update_period: int = 60*60
     last_update_time: int = 0
     def __init__(self, data_store_post: DataStorePost, data_store_user: DataStoreUser, timeout : int=1e12):
         self.create_time = time.time()

@@ -53,7 +53,7 @@ export function PostBatch(
 
       if (earliestPost != beforeUTC) setBeforeUTC(earliestPost);
       setHtmlEmbed(response.posts.map((v)=>[v.html,v.post_id]));
-      nextLoadTime = Date.now()+3000*response.posts.length;
+      nextLoadTime = Date.now()+1000*response.posts.length;
     });
   }, []);
   return <div>

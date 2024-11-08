@@ -1,6 +1,6 @@
 # Custom Content Blocker
 
-A website which gives users options to control their social media feed.
+A website ([link](https://content-curator.vercel.app/)) which gives users options to control their social media feed.
 
 ## Environment Setup
 

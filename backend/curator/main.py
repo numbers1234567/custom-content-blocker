@@ -25,6 +25,8 @@ import time
 
 import random
 
+import re
+
 from backend_shared.data_models import *
 from backend_shared.data_store import *
 
@@ -225,18 +227,36 @@ def get_restricted_ngram_helper(key: str):
         result = cur.fetchall()
         cur.close()
         return [ngram for ngram, in result]
+    
+@cache
+def get_restricted_regex_helper(key: str) -> re.Pattern:
+    with psycopg2.connect(POSTGRES_DB_URL) as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT regex
+            FROM emerging_topic NATURAL JOIN emerging_topic_regex
+            WHERE topic_key=%s;
+        """, (key,))
+
+        result = cur.fetchone()
+        cur.close()
+
+        r_pattern = result[0]
+        return re.compile(r_pattern)
 
 def get_restricted_ngram(topic : CurationMode) -> List[str]:
     return get_restricted_ngram_helper(topic.key)
 
+# I feel this isn't very testable. Look at those inner functions. I did this because I didn't want to pollute the namespace.
 def get_ensembled_curate_score(post_id : str, curation_setting : CurationSetting) -> float:
     # I/O heavy operations
 
     # result_buffer stores results
     result_buffer_lock = threading.Lock()
-    result_buffer: List[float] = [0] * 2
+    result_buffer: List[float] = [0] * 3
     BLIP_IDX  = 0
     NGRAM_IDX = 1
+    REGEX_IDX = 2
     def blip_worker(post_id : str, curate_key : str, result_buf: List[float], result_idx: int):
         score = get_blip_curate_score(post_id,curate_key)
         score: float = score if score else 0
@@ -250,11 +270,19 @@ def get_ensembled_curate_score(post_id : str, curation_setting : CurationSetting
         vectorizer.fit([data_store_post[post_id].text])
 
         post_ngrams = vectorizer.get_feature_names_out()
-
-        result_buf[result_idx] = 0
+        with result_buffer_lock:
+            result_buf[result_idx] = 0
         
         for filter in filters:
-            restricted = get_restricted_ngram_helper(filter.key)
+            try:
+                restricted = get_restricted_ngram_helper(filter.key)
+            except Exception as e:
+                print("[ERROR]: Failed to retrieve n-gram helper.")
+                print("   Message: " + str(e))
+                continue
+            
+            if len(restricted) == 0:
+                continue
             works = True
             for ngram in restricted:
                 if ngram not in post_ngrams:
@@ -265,18 +293,46 @@ def get_ensembled_curate_score(post_id : str, curation_setting : CurationSetting
                     result_buf[result_idx] = 1
                 break
 
+    def regex_worker(post_id: str, filters: List[CurationMode], result_buf: List[float], result_idx: int):
+        
+        text = data_store_post[post_id].text.lower()
+
+        # Keep only alphanumeric characters
+        text = re.sub("[^a-zA-Z0-9]", " ", text)
+
+        with result_buffer_lock:
+            result_buf[result_idx] = 0
+
+        for filter in filters:
+            try:
+                pattern = get_restricted_regex_helper(filter.key)
+            except Exception as e:
+                print("[ERROR]: Failed to retrieve regex helper.")
+                print("   Message: " + str(e))
+                continue
+
+            # If the post matches a pattern, filter it out.
+            if pattern.match(text):
+                with result_buffer_lock:
+                    result_buf[result_idx] = 1
+                return
+
     blip_thread = threading.Thread(target=blip_worker, 
                                    args=(post_id, curation_setting.curation_mode.key, result_buffer,BLIP_IDX))
     ngram_thread = threading.Thread(target=ngram_worker,
                                     args=(post_id, curation_setting.trending_filters, result_buffer, NGRAM_IDX))
+    regex_thread = threading.Thread(target=regex_worker,
+                                    args=(post_id, curation_setting.trending_filters, result_buffer, REGEX_IDX))
     
     blip_thread.start()
     ngram_thread.start()
+    regex_thread.start()
 
     blip_thread.join()
     ngram_thread.join()
+    regex_thread.join()
 
-    if result_buffer[NGRAM_IDX] >= 0.5: return 1
+    if result_buffer[NGRAM_IDX] >= 0.5 or result_buffer[REGEX_IDX] >= 0.5: return 1
     else: return result_buffer[BLIP_IDX]
 
 

@@ -62,6 +62,12 @@ CREATE TABLE emerging_topic_ngram (
     PRIMARY KEY (topic_id, ngram)
 );
 
+CREATE TABLE emerging_topic_regex (
+    topic_id INT NOT NULL REFERENCES emerging_topic(topic_id) ON DELETE CASCADE,
+    regex TEXT NOT NULL,
+    PRIMARY KEY (topic_id)
+);
+
 COPY social_post_data
 FROM '/docker-entrypoint-initdb.d/test_post_data.csv'
 DELIMITER E'\t'
@@ -94,5 +100,10 @@ CSV HEADER;
 
 COPY emerging_topic_ngram
 FROM '/docker-entrypoint-initdb.d/test_emerging_topic_ngram.csv'
+DELIMITER E'\t'
+CSV HEADER;
+
+COPY emerging_topic_regex
+FROM '/docker-entrypoint-initdb.d/test_emerging_topic_regex.csv'
 DELIMITER E'\t'
 CSV HEADER;

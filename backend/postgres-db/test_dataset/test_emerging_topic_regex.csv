@@ -1,0 +1,6 @@
+topic_id	regex
+0	(.*mitch.*trump.*)|(.*trump.*mitch.*)$
+1	(.*kamala.*wage.*)|(.*wage.*kamala.*)|(.*harris.*wage.*)|(.*wage.*harris.*)$
+3	(.*walz.*dipshit.*)|(.*dipshit.*walz.*)|(.*harris.*tim.*)|(.*tim.*harris.*)$
+5	.*(kamala|harris).*$
+6	.*(( ai )|(artificial intelligence)).*$

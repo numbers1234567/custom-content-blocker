@@ -1,9 +1,11 @@
 import psycopg2
+import psycopg2.pool
+from contextlib import contextmanager
 from dataclasses import dataclass,field
 
 import random
 
-from typing import List
+from typing import List,Generator
 
 from functools import cache
 import threading
@@ -16,8 +18,28 @@ except:
     from data_models import CurationMode
 
 class DataStore:
-    def __init__(self, postgres_db_url: str, verbose: bool=False):
-        self.postgres_db_url = postgres_db_url
+    def __init__(self, postgres_db_url: str|None=None, conn_pool: psycopg2.pool.AbstractConnectionPool|None=None, minconn: int=2, maxconn: int=2, verbose: bool=False):
+        assert postgres_db_url or conn_pool
+        
+        if not conn_pool:
+            # Construct connection pool for this DataStore
+            s = postgres_db_url.replace("postgres://", "")
+            [credentials,db_string] = s.split("@")
+            [user,password] = credentials.split(":")
+            [addr,db_name] = db_string.split("/")
+            [host,port] = addr.split(":")
+            conn_pool = psycopg2.pool.ThreadedConnectionPool(
+                minconn, maxconn,
+                user=user,
+                password=password,
+                host=host,
+                port=port,
+                database=db_name,
+            )
+
+        self.conn_pool = conn_pool
+        conn_pool._kwargs
+
         self._verbose = verbose
         
     def _log(self, text: str, message:str|None = None):
@@ -26,13 +48,27 @@ class DataStore:
         if message:
             print(f"   Message: {message}")
 
-    def create_db_connection(self):  # No type annotation, but should return a psycopg2 connection
-        return psycopg2.connect(self.postgres_db_url)
+    @contextmanager
+    def create_db_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:  # No type annotation, but should return a psycopg2 connection
+        # Busy-wait until connection is retrieved
+        conn: psycopg2.extensions.connection|None = None
+        while not conn:
+            try:
+                conn = self.conn_pool.getconn()
+            except psycopg2.pool.PoolError as e:
+                # Queries take a while, so 0.05 may be fine.
+                time.sleep(0.05)
+        assert conn
+
+        try:
+            yield conn
+        finally:
+            self.conn_pool.putconn(conn)
     
 class PostData(DataStore):
-    def __init__(self, postgres_db_url: str, internal_id: int|None=None, post_id: str|None=None, embed_html: str|None=None, text: str|None=None, create_utc: int|None=None, verbose: bool=False):
+    def __init__(self, conn_pool: psycopg2.pool.AbstractConnectionPool, internal_id: int|None=None, post_id: str|None=None, embed_html: str|None=None, text: str|None=None, create_utc: int|None=None, verbose: bool=False):
         assert internal_id or post_id
-        super().__init__(postgres_db_url, verbose=verbose)
+        super().__init__(conn_pool=conn_pool, verbose=verbose)
 
         self.internal_id: int = -1
         self.post_id: str = ""
@@ -70,8 +106,8 @@ class PostData(DataStore):
         return f"<PostData {self.post_id} - {self.internal_id}>"
 
 class DataStorePost(DataStore):
-    def __init__(self, postgres_db_url, verbose=False):
-        super().__init__(postgres_db_url, verbose=verbose)
+    def __init__(self, postgres_db_url, minconn: int=5, maxconn: int=10, verbose=False):
+        super().__init__(postgres_db_url, minconn=minconn, maxconn=maxconn, verbose=verbose)
 
         self.max_id_lock = threading.Lock()
         self.max_id = 0
@@ -126,7 +162,7 @@ class DataStorePost(DataStore):
                 cur.close()
 
                 self._log(f"Successfully inserted post {post_id}")
-                if return_post: return PostData(self.postgres_db_url, add_id, post_id, embed_html, text, create_utc, verbose=self._verbose)
+                if return_post: return PostData(self.conn_pool, add_id, post_id, embed_html, text, create_utc, verbose=self._verbose)
 
         except psycopg2.IntegrityError as e:  # This should catch the max id being desynced for some reason
             if post_id in self:
@@ -159,7 +195,7 @@ class DataStorePost(DataStore):
             cur.close()
 
             return PostData(
-                self.postgres_db_url,
+                conn_pool=self.conn_pool,
                 internal_id=internal_id,
                 post_id=post_id,
                 embed_html=embed_html,
@@ -183,7 +219,7 @@ class DataStorePost(DataStore):
         
         return [
             PostData(
-                self.postgres_db_url,
+                conn_pool=self.conn_pool,
                 internal_id=internal_id,
                 post_id=post_id,
                 embed_html=embed_html,
@@ -197,27 +233,26 @@ class UserData(DataStore):
     # Curate id must be synced
     whitelist_key_characters = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM"
     max_curate_id_lock = threading.Lock()
-    def _set_max_curate_id(postgres_db_url: str):
-        with psycopg2.connect(postgres_db_url) as conn:
-            cur = conn.cursor()
-            
-            cur.execute("""
-                SELECT MAX(curation_id)
-                FROM curation_modes;
-            """)
+    def _set_max_curate_id(conn: psycopg2.extensions.connection):
+        cur = conn.cursor()
+        
+        cur.execute("""
+            SELECT MAX(curation_id)
+            FROM curation_modes;
+        """)
 
-            result = cur.fetchone()
+        result = cur.fetchone()
 
-            max_id = result[0] if result[0]!=None else -1
-            
-            cur.close()
-            conn.close()
+        max_id = result[0] if result[0]!=None else -1
+        
+        cur.close()
+        conn.close()
 
-            UserData.max_curate_id = max_id
+        UserData.max_curate_id = max_id
     max_curate_id = 0
 
-    def __init__(self, postgres_db_url: str, email: str, create_utc: int=None, uid: int=None, curation_modes: List[CurationMode]|None=None, verbose: bool = False):
-        super().__init__(postgres_db_url, verbose=verbose)
+    def __init__(self, conn_pool: psycopg2.pool.AbstractConnectionPool, email: str, create_utc: int=None, uid: int=None, curation_modes: List[CurationMode]|None=None, verbose: bool = False):
+        super().__init__(conn_pool=conn_pool, verbose=verbose)
 
         self.email: str = email
         self.create_utc: int = 0
@@ -283,7 +318,8 @@ class UserData(DataStore):
             self._log(f"Failed to insert curation mode {name} with id {curation_id} and key {curation_key}. Retries left: {_retries}.",
                         message=str(e))
             if _retries > 0:
-                UserData._set_max_curate_id(self.postgres_db_url)
+                with self.create_db_connection() as conn:
+                    UserData._set_max_curate_id(conn)
                 self.create_curation_mode(name, _retries=_retries-1)
 
     def delete_curation_mode(self, curate_key: str):
@@ -339,7 +375,7 @@ class DataStoreUser(DataStore):
                 conn.commit()
                 cur.close()
 
-                if return_user: return UserData(self.postgres_db_url, email, create_utc=create_time, uid=add_id, curation_modes=[], verbose=self._verbose)
+                if return_user: return UserData(self.conn_pool, email, create_utc=create_time, uid=add_id, curation_modes=[], verbose=self._verbose)
 
         except psycopg2.IntegrityError as e:  # This should catch the max id being desynced for some reason
             self._log(f"Failed to insert user {email} with id {add_id}. Retries left: {_retries}.",
@@ -352,7 +388,7 @@ class DataStoreUser(DataStore):
 
     def __getitem__(self, email: str) -> UserData:
         try:
-            return UserData(self.postgres_db_url, email)
+            return UserData(self.conn_pool, email)
         except ValueError as e:
             raise ValueError(f"Failed to retrieve data for {self}. Does the user exist in the database?")
 

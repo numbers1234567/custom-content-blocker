@@ -69,7 +69,7 @@ export function Sidebar({
     ref.current.style.left = "0px";
   }
 
-  return <div className="h-screen bg-white w-64 p-4 text-black border-r-2 absolute transition-all overflow-y-scroll" style={{left : "0px"}} ref={ref}>
+  return <div className="h-screen bg-white w-64 p-4 text-black border-r-2 absolute transition-all" style={{left : "0px"}} ref={ref}>
     <div className="">
       {!credentials.isSet && <LoginButton credentials={credentials} setCredentials={setCredentials}></LoginButton>}
       <p>Curation Modes</p>

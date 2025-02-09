@@ -369,10 +369,11 @@ class BLIPClassifier(Classifier):
                 target_len = image_embeds.shape[1]
                 fake = " ".join(["[PAD]"]*(target_len-2))
                 text = tuple(list(text) + [fake])
-                text = self.encoder.tokenizer(text, return_tensors="pt", padding="longest").to(self.device) 
                 
-                text_input_ids = text.input_ids[:batches]
-                text_attention_mask = text.attention_mask[:batches]
+                text = self.encoder.tokenizer(text, return_tensors="pt", padding="longest").to(self.device)
+
+                text_input_ids = text.input_ids[:batches,:197]
+                text_attention_mask = text.attention_mask[:batches,:197]
             else:
                 text = self.encoder.tokenizer(text, return_tensors="pt", padding="longest").to(self.device) 
                 
